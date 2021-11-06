@@ -1,7 +1,5 @@
-<!-- Keep a Changelog guide -> https://keepachangelog.com -->
-
-# intellij-spring-graphql-plugin Changelog
+# Spring GraphQL Support
 
 ## [Unreleased]
 ### Added
-- Initial scaffold created from [IntelliJ Platform Plugin Template](https://github.com/JetBrains/intellij-platform-plugin-template)
+- Temporary

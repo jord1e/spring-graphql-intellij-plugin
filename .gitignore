@@ -1,4 +1,6 @@
-.gradle
-.idea
-.qodana
-build
+/.gradle/
+/.idea/
+/.qodana/
+/build/
+
+/src/test/testData/

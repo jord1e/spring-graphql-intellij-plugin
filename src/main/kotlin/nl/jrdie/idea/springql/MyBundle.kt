@@ -1,4 +1,4 @@
-package com.github.jord1e.intellijspringgraphqlplugin
+package nl.jrdie.idea.springql
 
 import com.intellij.DynamicBundle
 import org.jetbrains.annotations.NonNls

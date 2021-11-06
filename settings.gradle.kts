@@ -1,1 +1,1 @@
-rootProject.name = "intellij-spring-graphql-plugin"
+rootProject.name = "spring-graphql-intellij-plugin"
