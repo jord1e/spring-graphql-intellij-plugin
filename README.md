@@ -7,7 +7,10 @@
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/17963-spring-graphql-support.svg)](https://plugins.jetbrains.com/plugin/17963-spring-graphql-support)
 
 <!-- Plugin description -->
-This plugin adds support for [Spring GraphQL](https://spring.io/projects/spring-graphql).
+This plugin adds support for [Spring GraphQL](https://spring.io/projects/spring-graphql). **The plugin is currently Work in Progress!**
+
+Features:
+- Autocompletion of types and fields in @SchemaMapping annotations
 <!-- Plugin description end -->
 
 ## Installation
