@@ -51,6 +51,9 @@ qodana {
 }
 
 tasks {
+    runIde {
+        autoReloadPlugins.set(true)
+    }
     // Set the JVM compatibility versions
     properties("javaVersion").let {
         withType<JavaCompile> {

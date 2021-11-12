@@ -7,12 +7,12 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.ResolveResult
-import nl.jrdie.idea.springql.services.getGraphQlIdeService
+import nl.jrdie.idea.springql.services.getKaraService
 
 class GraphQlTypeNameReference(element: PsiElement) : PsiPolyVariantReferenceBase<PsiElement>(element) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        val graphQlIdeService = myElement.project.getGraphQlIdeService()
+        val graphQlIdeService = myElement.project.getKaraService()
 
         return graphQlIdeService
             .getTypeDefinitionRegistry(myElement.project)
@@ -22,7 +22,7 @@ class GraphQlTypeNameReference(element: PsiElement) : PsiPolyVariantReferenceBas
     }
 
     override fun getVariants(): Array<Any> {
-        val graphQlIdeService = myElement.project.getGraphQlIdeService()
+        val graphQlIdeService = myElement.project.getKaraService()
 
         return graphQlIdeService
             .getTypeDefinitionRegistry(myElement.project)

@@ -4,12 +4,11 @@ import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.icons.AllIcons
-import com.intellij.lang.jsgraphql.icons.JSGraphQLIcons
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.nextLeaf
 import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
-import nl.jrdie.idea.springql.services.SpringGraphQlIdeService
+import nl.jrdie.idea.springql.services.KaraIdeService
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.toUElement
 
@@ -26,11 +25,11 @@ class SchemaMappingToSchemaLineMarkerProvider : RelatedItemLineMarkerProvider() 
         }
 
         if (!SchemaMappingType.isSchemaMappingAnnotation(uElement.qualifiedName!!)) {
-            println("NOT A SCHEMA MAPPING ANNOTATION: ${uElement.qualifiedName}")
+//            println("NOT A SCHEMA MAPPING ANNOTATION: ${uElement.qualifiedName}")
             return
         }
 
-        val graphQlService = element.project.service<SpringGraphQlIdeService>()
+        val graphQlService = element.project.service<KaraIdeService>()
         val index = graphQlService.getAnnotationIndex().findMappingsByAnnotation(uElement)
 
         val lineMarkerInfo = if (index.isEmpty()) {

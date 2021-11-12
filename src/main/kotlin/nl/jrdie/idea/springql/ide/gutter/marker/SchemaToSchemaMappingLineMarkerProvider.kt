@@ -3,14 +3,13 @@ package nl.jrdie.idea.springql.ide.gutter.marker
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
-import com.intellij.icons.AllIcons
 import com.intellij.lang.jsgraphql.icons.JSGraphQLIcons
 import com.intellij.lang.jsgraphql.psi.GraphQLFieldDefinition
 import com.intellij.lang.jsgraphql.psi.GraphQLPsiUtil
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.nextLeaf
-import nl.jrdie.idea.springql.services.SpringGraphQlIdeService
+import nl.jrdie.idea.springql.services.KaraIdeService
 
 class SchemaToSchemaMappingLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
@@ -22,7 +21,7 @@ class SchemaToSchemaMappingLineMarkerProvider : RelatedItemLineMarkerProvider() 
             return
         }
 
-        val graphQlService = element.project.service<SpringGraphQlIdeService>()
+        val graphQlService = element.project.service<KaraIdeService>()
         val indexEntry = graphQlService.getAnnotationIndex().findMappingsByFieldDefinition(element)
         if (indexEntry.isNotEmpty()) {
             val lineMarkerInfo = NavigationGutterIconBuilder

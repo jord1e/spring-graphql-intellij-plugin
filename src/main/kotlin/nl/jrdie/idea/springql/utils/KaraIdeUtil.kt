@@ -1,45 +1,52 @@
 package nl.jrdie.idea.springql.utils
 
 import com.intellij.psi.PsiElement
-import com.intellij.spring.model.aliasFor.SpringAliasForUtils
 import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.evaluateString
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 
-object SpringGraphQlIdeUtil {
+object KaraIdeUtil {
 
     fun getGraphQlField(uMethod: UMethod): String? {
-        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod)?.first()
+        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod).firstOrNull()
         if (annotationInfo == null) {
             return null
         }
 
-        val annotationField = SpringAliasForUtils.findAliasFor(
-            annotationInfo.uAnnotation.sourcePsi,
-            annotationInfo.mappingType.qualifiedAnnotationName,
-            "org.springframework.graphql.data.method.annotation",
-            "field",
-        )
+        val field: String? = when (annotationInfo.mappingType) {
+            SchemaMappingType.SCHEMA_MAPPING -> annotationInfo.uAnnotation.getValue("field")
+                ?: annotationInfo.uAnnotation.getValue("value")
+            SchemaMappingType.MUTATION_MAPPING,
+            SchemaMappingType.QUERY_MAPPING,
+            SchemaMappingType.SUBSCRIPTION_MAPPING -> annotationInfo.uAnnotation.getValue("name")
+                ?: annotationInfo.uAnnotation.getValue("value")
+        }
 
-        if (annotationField?.annotation != null) {
-            return getAnnotationAttributeValue(annotationInfo.uAnnotation, annotationField.attributeName)
+        if (field != null) {
+            return field
         }
 
         return uMethod.name
     }
 
-    fun getAnnotationAttributeValue(uAnnotation: UAnnotation, attribute: String): String? {
-        return uAnnotation
+    fun UAnnotation.getValue(attribute: String): String? {
+        return this
             .findAttributeValue(attribute)
             ?.evaluateString()
     }
 
     fun getSchemaMappingTypeName(uMethod: UMethod): String? {
-        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod)?.first()
+        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod).firstOrNull()
         if (annotationInfo == null) {
-            return null // TODO MethodParameter
+            // Handle case where @SchemaMapping(typeName = "MyType") annotation is present on the class.
+            val classSchemaMappingName: String? = uMethod
+                .getContainingUClass()
+                ?.findAnnotation(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName)
+                ?.getValue("typeName")
+
+            if (classSchemaMappingName != null) {
+                return classSchemaMappingName
+            }
+            return null
         }
 
         return when (annotationInfo.mappingType) {
@@ -47,7 +54,7 @@ object SpringGraphQlIdeUtil {
             SchemaMappingType.MUTATION_MAPPING -> "Mutation"
             SchemaMappingType.SUBSCRIPTION_MAPPING -> "Subscription"
             SchemaMappingType.SCHEMA_MAPPING -> {
-                val typeNameValue = getAnnotationAttributeValue(annotationInfo.uAnnotation, "typeName")
+                val typeNameValue = annotationInfo.uAnnotation.getValue("typeName")
 
                 if (typeNameValue == null) {
                     return "MethodTypeOfFirstParam"
@@ -91,5 +98,13 @@ object SpringGraphQlIdeUtil {
             return false
         }
         return getSchemaMappingAnnotationInfo(uElement) != null
+    }
+
+    fun isSchemaMappingAnnotation(uAnnotation: UAnnotation): Boolean {
+        return SchemaMappingType.isSchemaMappingAnnotation(uAnnotation.qualifiedName)
+    }
+
+    fun isBatchMappingAnnotation(uAnnotation: UAnnotation): Boolean {
+        return uAnnotation.qualifiedName == "org.springframework.graphql.data.method.annotation.BatchMapping"
     }
 }

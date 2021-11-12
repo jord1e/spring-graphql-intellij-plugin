@@ -5,8 +5,8 @@ import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.lang.jsgraphql.types.language.ObjectTypeDefinition
 import com.intellij.psi.PsiElement
-import nl.jrdie.idea.springql.services.getGraphQlIdeService
-import nl.jrdie.idea.springql.utils.SpringGraphQlIdeUtil
+import nl.jrdie.idea.springql.services.getKaraService
+import nl.jrdie.idea.springql.utils.KaraIdeUtil
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.toUElement
 
@@ -18,12 +18,12 @@ class SchemaMappingDoesNotExistAnnotator : Annotator {
             return
         }
 
-        val annotationInfo = SpringGraphQlIdeUtil.getSchemaMappingAnnotationInfo(uElement)
+        val annotationInfo = KaraIdeUtil.getSchemaMappingAnnotationInfo(uElement)
         if (annotationInfo == null) {
             return // Not a SchemaMapping annotation
         }
 
-        val graphQlIdeService = element.project.getGraphQlIdeService()
+        val graphQlIdeService = element.project.getKaraService()
         val indexEntries = graphQlIdeService.getAnnotationIndex().findMappingsByAnnotation(uElement)
         for (indexEntry in indexEntries) {
             val objectType = graphQlIdeService.getTypeDefinitionRegistry(element.project)

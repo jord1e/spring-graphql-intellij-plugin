@@ -4,7 +4,7 @@ import com.intellij.lang.jsgraphql.psi.GraphQLFieldDefinition
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UMethod
 
-class SpringGraphQlIdeIndex {
+class KaraIdeIndex {
 
     val annotationIndex: MutableSet<SchemaMappingAnnotationIndexEntry>
 

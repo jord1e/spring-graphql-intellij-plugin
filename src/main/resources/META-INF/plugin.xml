@@ -2,17 +2,16 @@
 <idea-plugin>
     <id>nl.jrdie.idea.springql</id>
     <name>Spring GraphQL Support</name>
-    <vendor>Jordie (@jord1e)</vendor>
+    <vendor>Jordie</vendor>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
     <!--    <depends>com.intellij.java</depends>-->
     <depends>com.intellij.lang.jsgraphql</depends>
-    <depends>com.intellij.spring</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <projectService serviceImplementation="nl.jrdie.idea.springql.services.SpringGraphQlIdeService"/>
+        <projectService serviceImplementation="nl.jrdie.idea.springql.services.KaraIdeService"/>
 
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="nl.jrdie.idea.springql.ide.gutter.marker.SchemaMappingToSchemaLineMarkerProvider"/>
@@ -24,6 +23,11 @@
 
         <annotator language="UAST"
                    implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingDoesNotExistAnnotator"/>
+        <annotator language="UAST"
+                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.DuplicateSchemaMappingAnnotator"/>
+        <annotator language="UAST"
+                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.BatchMappingAndSchemaMappingErrorAnnotator"/>
+
     </extensions>
 
 </idea-plugin>
