@@ -39,37 +39,37 @@ class SchemaMappingContributor : PsiReferenceContributor() {
             PsiJavaPatterns.psiElement().insideAnnotationParam(
                 StandardPatterns.string().equalTo(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName),
                 "value"
-            ).or(
+            ).andOr(
                 PsiJavaPatterns.psiElement().insideAnnotationParam(
                     StandardPatterns.string().equalTo(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName),
                     "field"
                 )
-            ).or(
+            ).andOr(
                 PsiJavaPatterns.psiElement().insideAnnotationParam(
                     StandardPatterns.string().equalTo(SchemaMappingType.QUERY_MAPPING.qualifiedAnnotationName),
                     "value"
                 )
-            ).or(
+            ).andOr(
                 PsiJavaPatterns.psiElement().insideAnnotationParam(
                     StandardPatterns.string().equalTo(SchemaMappingType.QUERY_MAPPING.qualifiedAnnotationName),
                     "name"
                 )
-            ).or(
+            ).andOr(
                 PsiJavaPatterns.psiElement().insideAnnotationParam(
                     StandardPatterns.string().equalTo(SchemaMappingType.MUTATION_MAPPING.qualifiedAnnotationName),
                     "value"
                 )
-            ).or(
+            ).andOr(
                 PsiJavaPatterns.psiElement().insideAnnotationParam(
                     StandardPatterns.string().equalTo(SchemaMappingType.MUTATION_MAPPING.qualifiedAnnotationName),
                     "name"
                 )
-            ).or(
+            ).andOr(
                 PsiJavaPatterns.psiElement().insideAnnotationParam(
                     StandardPatterns.string().equalTo(SchemaMappingType.SUBSCRIPTION_MAPPING.qualifiedAnnotationName),
                     "value"
                 )
-            ).or(
+            ).andOr(
                 PsiJavaPatterns.psiElement().insideAnnotationParam(
                     StandardPatterns.string().equalTo(SchemaMappingType.SUBSCRIPTION_MAPPING.qualifiedAnnotationName),
                     "name"

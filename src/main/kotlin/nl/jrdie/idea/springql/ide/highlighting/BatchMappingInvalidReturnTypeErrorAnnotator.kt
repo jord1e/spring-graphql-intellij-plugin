@@ -26,9 +26,7 @@ import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
 
-// Annotating a method with @SchemaMapping and @BatchMapping at once is prohibited.
-//  See: TODO Insert URL here
-class BatchMappingAndSchemaMappingErrorAnnotator : Annotator {
+class BatchMappingInvalidReturnTypeErrorAnnotator : Annotator {
 
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         val svc = element.project.service<QLIdeService>()
@@ -41,26 +39,24 @@ class BatchMappingAndSchemaMappingErrorAnnotator : Annotator {
             return
         }
 
-        val isSchemaMapping = uElement.uAnnotations.filter(svc::isSchemaMappingAnnotation)
-
-        if (isSchemaMapping.isEmpty()) {
-            // Short circuit for performance.
-            return
-        }
-
-        val isBatchMapping = uElement.uAnnotations.filter(svc::isBatchMappingAnnotation)
+        val isBatchMapping = uElement.uAnnotations
+            .filter(svc::isBatchMappingAnnotation)
 
         if (isBatchMapping.isEmpty()) {
             return
         }
 
+        if (svc.isValidBatchMappingReturnType(uElement)) {
+            return
+        }
+
         // Annotate (highlight) offending annotations.
-        (isBatchMapping union isSchemaMapping).forEach {
-            println("Annotating ${it.qualifiedName}")
+        for (it in isBatchMapping) {
+            println("Annotating (x) ${it.qualifiedName}")
             holder
                 .newAnnotation(
                     HighlightSeverity.ERROR,
-                    "Methods can not have both @SchemaMapping and @BatchMapping annotations at the same time"
+                    "Methods annotated with @BatchMapping should return an instance of Flux<V>, List<V>, Mono<Map<K, V>>, or Map<K, V>"
                 )
                 .range(it.sourcePsi!!)
                 .create()

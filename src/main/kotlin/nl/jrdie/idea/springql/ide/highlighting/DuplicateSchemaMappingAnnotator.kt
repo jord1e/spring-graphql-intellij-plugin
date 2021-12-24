@@ -21,7 +21,7 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiElement
-import nl.jrdie.idea.springql.utils.KaraIdeUtil
+import nl.jrdie.idea.springql.utils.QLIdeUtil
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
 
@@ -38,7 +38,7 @@ class DuplicateSchemaMappingAnnotator : Annotator {
 
         val numSchemaMappingAnnotations = uElement
             .uAnnotations
-            .filter(KaraIdeUtil::isSchemaMappingAnnotation)
+            .filter(QLIdeUtil::isSchemaMappingAnnotation)
 
         if (numSchemaMappingAnnotations.size > 1) {
             numSchemaMappingAnnotations.forEach {

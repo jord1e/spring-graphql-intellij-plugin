@@ -24,8 +24,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.nextLeaf
-import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
-import nl.jrdie.idea.springql.services.KaraIdeService
+import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.toUElement
 
@@ -35,28 +34,33 @@ class SchemaMappingToSchemaLineMarkerProvider : RelatedItemLineMarkerProvider() 
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        val svc = element.project.service<QLIdeService>()
+        if (!svc.isApplicableProject(element.project)) {
+            return
+        }
+
         val uElement = element.toUElement()
 
         if (uElement !is UAnnotation) {
             return
         }
 
-        if (!SchemaMappingType.isSchemaMappingAnnotation(uElement.qualifiedName!!)) {
+        if (!svc.isSchemaMappingAnnotation(uElement)) {
 //            println("NOT A SCHEMA MAPPING ANNOTATION: ${uElement.qualifiedName}")
             return
         }
 
-        val graphQlService = element.project.service<KaraIdeService>()
-        val index = graphQlService.getAnnotationIndex().findMappingsByAnnotation(uElement)
+        val index = svc.index.schemaMappingByAnnotation(uElement)
+        println("Index for $uElement: (${index.size}) $index")
 
-        val lineMarkerInfo = if (index.isEmpty()) {
+        val lineMarkerInfo = if (index.isEmpty() || index.none { it.schemaPsi.isNotEmpty() }) {
             NavigationGutterIconBuilder.create(AllIcons.Gutter.WriteAccess)
                 .setTooltipText("No schema declaration")
                 .setTargets(emptyList())
         } else {
             NavigationGutterIconBuilder.create(AllIcons.Gutter.ReadAccess)
                 .setTooltipText("Navigate to schema declaration")
-                .setTargets(index.mapNotNull { it.graphQlSchemaPsi?.nextLeaf() })
+                .setTargets(index.flatMap {it.schemaPsi}.mapNotNull { it?.nextLeaf() })
         }
 
         result.add(lineMarkerInfo.createLineMarkerInfo(element.nextLeaf()!!))

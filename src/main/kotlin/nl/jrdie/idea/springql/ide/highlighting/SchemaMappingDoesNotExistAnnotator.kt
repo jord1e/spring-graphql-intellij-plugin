@@ -20,32 +20,33 @@ package nl.jrdie.idea.springql.ide.highlighting
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.lang.jsgraphql.types.language.ObjectTypeDefinition
+import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
-import nl.jrdie.idea.springql.services.getKaraService
-import nl.jrdie.idea.springql.utils.KaraIdeUtil
+import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.toUElement
 
 class SchemaMappingDoesNotExistAnnotator : Annotator {
 
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        val svc = element.project.service<QLIdeService>()
+        if (!svc.isApplicableProject(element.project)) {
+            return
+        }
+
         val uElement = element.toUElement()
         if (uElement !is UAnnotation) {
             return
         }
 
-        val annotationInfo = KaraIdeUtil.getSchemaMappingAnnotationInfo(uElement)
-        if (annotationInfo == null) {
-            return // Not a SchemaMapping annotation
+        if (!svc.isSchemaMappingAnnotation(uElement)) {
+            return
         }
 
-        val graphQlIdeService = element.project.getKaraService()
-        val indexEntries = graphQlIdeService.getAnnotationIndex().findMappingsByAnnotation(uElement)
+        val graphQlIdeService = element.project.service<QLIdeService>()
+        val indexEntries = graphQlIdeService.index.schemaMappingByAnnotation(uElement)
         for (indexEntry in indexEntries) {
-            val objectType = graphQlIdeService.getTypeDefinitionRegistry(element.project)
-                .getType(indexEntry.parentType, ObjectTypeDefinition::class.java)
-                .orElse(null)
+            val objectType = graphQlIdeService.schemaRegistry.getSchemaPsiForObject(indexEntry.parentType)
 
             // Type does not exist
             if (objectType == null) {

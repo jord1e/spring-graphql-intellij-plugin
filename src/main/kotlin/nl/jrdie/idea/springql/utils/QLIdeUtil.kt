@@ -21,7 +21,7 @@ import com.intellij.psi.PsiElement
 import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
 import org.jetbrains.uast.*
 
-object KaraIdeUtil {
+object QLIdeUtil {
 
     fun getGraphQlField(uMethod: UMethod): String? {
         val annotationInfo = getSchemaMappingAnnotationInfo(uMethod).firstOrNull()
@@ -74,6 +74,7 @@ object KaraIdeUtil {
                 val typeNameValue = annotationInfo.uAnnotation.getValue("typeName")
 
                 if (typeNameValue == null) {
+                    // TODO
                     return "MethodTypeOfFirstParam"
                 }
 
