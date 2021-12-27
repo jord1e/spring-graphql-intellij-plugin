@@ -1,17 +1,26 @@
 package nl.jrdie.idea.springql.index
 
 import com.intellij.psi.PsiElement
-import nl.jrdie.idea.springql.index.entry.QLClassBatchMappingIndexEntry
 import nl.jrdie.idea.springql.index.entry.QLClassSchemaMappingIndexEntry
 import nl.jrdie.idea.springql.index.entry.QLMethodBatchMappingIndexEntry
 import nl.jrdie.idea.springql.index.entry.QLMethodSchemaMappingIndexEntry
+import nl.jrdie.idea.springql.index.entry.SchemaMappingIndexEntry
 import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UClass
 
 interface QLIdeIndex {
 
-    fun schemaMappingByAnnotation(uAnnotation: UAnnotation): Set<QLMethodSchemaMappingIndexEntry>
+    fun schemaMappingByAnnotation(uAnnotation: UAnnotation): Set<SchemaMappingIndexEntry>
+
+    fun methodSchemaMappingByAnnotation(uAnnotation: UAnnotation): Set<QLMethodSchemaMappingIndexEntry>
+
+    fun schemaMappingByClass(uClass: UClass): Set<QLClassSchemaMappingIndexEntry>
 
     fun schemaMappingBySchemaPsi(psiElement: PsiElement): Set<QLMethodSchemaMappingIndexEntry>
+
+    fun allMethodSchemaMappingEntries(): Set<QLMethodSchemaMappingIndexEntry>
+
+    fun allMethodBatchMappingEntries(): Set<QLMethodBatchMappingIndexEntry>
 
     interface Builder<B : Builder<B>> {
 
@@ -21,10 +30,6 @@ interface QLIdeIndex {
 
         fun withMethodBatchMapping(batchMapping: QLMethodBatchMappingIndexEntry): B
 
-        fun withClassBatchMapping(batchMapping: QLClassBatchMappingIndexEntry): B
-
         fun build(): QLIdeIndex
-
     }
-
 }

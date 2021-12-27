@@ -23,8 +23,8 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import nl.jrdie.idea.springql.svc.QLIdeService
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElementOfType
 
 class SchemaMappingDoesNotExistAnnotator : Annotator {
 
@@ -34,28 +34,41 @@ class SchemaMappingDoesNotExistAnnotator : Annotator {
             return
         }
 
-        val uElement = element.toUElement()
-        if (uElement !is UAnnotation) {
+        val uMethod = element.toUElementOfType<UMethod>()
+        if (uMethod !is UMethod) {
             return
         }
 
-        if (!svc.isSchemaMappingAnnotation(uElement)) {
+        val mappingSummary = svc.getSummaryForMethod(uMethod)
+
+        if (mappingSummary == null) {
             return
         }
 
-        val graphQlIdeService = element.project.service<QLIdeService>()
-        val indexEntries = graphQlIdeService.index.schemaMappingByAnnotation(uElement)
-        for (indexEntry in indexEntries) {
-            val objectType = graphQlIdeService.schemaRegistry.getSchemaPsiForObject(indexEntry.parentType)
-
-            // Type does not exist
-            if (objectType == null) {
-                holder.newAnnotation(HighlightSeverity.WEAK_WARNING, "Type ${indexEntry.parentType} might not exist")
-                    .range(element)
-                    .create()
-            }
+        if (mappingSummary.typeName.isBlank()) {
+            holder.newAnnotation(HighlightSeverity.WARNING, "No type specified (or inherited)")
+                .range(mappingSummary.annotationPsi)
+                .create()
+            return
         }
 
+        val typeDefinition = svc.schemaRegistry.getObjectTypeDefinition(mappingSummary.typeName)
+        if (typeDefinition == null) {
+            holder.newAnnotation(HighlightSeverity.WARNING, "Type ${mappingSummary.typeName} might not exist")
+                .range(mappingSummary.annotationPsi)
+                .create()
+            return
+        }
+
+        val doesFieldExistOnType = typeDefinition
+            .fieldDefinitions
+            .any { it.name == mappingSummary.fieldName }
+        if (!doesFieldExistOnType) {
+            holder.newAnnotation(
+                HighlightSeverity.WARNING,
+                "Field ${mappingSummary.typeName}.${mappingSummary.fieldName} might not exist"
+            ).range(mappingSummary.annotationPsi)
+                .create()
+        }
     }
-
 }

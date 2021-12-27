@@ -5,7 +5,7 @@ import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.toUElementOfType
 
 /**
  * Disables the <pre>Method 'methodName()' is never used</pre> hint.
@@ -19,7 +19,7 @@ class QLImplicitUsageProvider : ImplicitUsageProvider {
             return false
         }
 
-        val uElement = element.toUElement()
+        val uElement = element.toUElementOfType<UMethod>()
         if (uElement is UMethod) {
             return svc.isMethodUsed(uElement)
         }
@@ -30,5 +30,4 @@ class QLImplicitUsageProvider : ImplicitUsageProvider {
     override fun isImplicitRead(element: PsiElement) = false
 
     override fun isImplicitWrite(element: PsiElement) = false
-
 }

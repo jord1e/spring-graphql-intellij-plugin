@@ -46,6 +46,7 @@ class BatchMappingInvalidReturnTypeErrorAnnotator : Annotator {
             return
         }
 
+        // TODO Handle nested generic Mono<Map<K, V>> instead of Mono<V>.
         if (svc.isValidBatchMappingReturnType(uElement)) {
             return
         }

@@ -17,66 +17,58 @@
 
 package nl.jrdie.idea.springql.ide.completion
 
-import com.intellij.patterns.PsiJavaPatterns
-import com.intellij.patterns.StandardPatterns
+import com.intellij.patterns.uast.ULiteralExpressionPattern
 import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceRegistrar
+import com.intellij.psi.registerUastReferenceProvider
 import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
-import org.jetbrains.kotlin.idea.completion.or
 
 class SchemaMappingContributor : PsiReferenceContributor() {
 
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        registrar.registerReferenceProvider(
-            PsiJavaPatterns.psiElement()
-                .insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName),
-                    "typeName"
-                ),
-            SchemaMappingAnnotationGraphQlReferenceProvider()
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName, "typeName"),
+            QLSchemaMappingTypeNameRefProvider()
         )
-        registrar.registerReferenceProvider(
-            PsiJavaPatterns.psiElement().insideAnnotationParam(
-                StandardPatterns.string().equalTo(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName),
-                "value"
-            ).andOr(
-                PsiJavaPatterns.psiElement().insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName),
-                    "field"
-                )
-            ).andOr(
-                PsiJavaPatterns.psiElement().insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.QUERY_MAPPING.qualifiedAnnotationName),
-                    "value"
-                )
-            ).andOr(
-                PsiJavaPatterns.psiElement().insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.QUERY_MAPPING.qualifiedAnnotationName),
-                    "name"
-                )
-            ).andOr(
-                PsiJavaPatterns.psiElement().insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.MUTATION_MAPPING.qualifiedAnnotationName),
-                    "value"
-                )
-            ).andOr(
-                PsiJavaPatterns.psiElement().insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.MUTATION_MAPPING.qualifiedAnnotationName),
-                    "name"
-                )
-            ).andOr(
-                PsiJavaPatterns.psiElement().insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.SUBSCRIPTION_MAPPING.qualifiedAnnotationName),
-                    "value"
-                )
-            ).andOr(
-                PsiJavaPatterns.psiElement().insideAnnotationParam(
-                    StandardPatterns.string().equalTo(SchemaMappingType.SUBSCRIPTION_MAPPING.qualifiedAnnotationName),
-                    "name"
-                )
-            ),
-            SchemaMappingFieldNameReferenceProvider()
+
+        // @SchemaMapping
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName, "value"),
+            QLSchemaMappingFieldNameRefProvider()
+        )
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName, "field"),
+            QLSchemaMappingFieldNameRefProvider()
+        )
+
+        // @QueryMapping
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.QUERY_MAPPING.qualifiedAnnotationName, "value"),
+            QLSchemaMappingFieldNameRefProvider()
+        )
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.QUERY_MAPPING.qualifiedAnnotationName, "name"),
+            QLSchemaMappingFieldNameRefProvider()
+        )
+
+        // @MutationMapping
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.MUTATION_MAPPING.qualifiedAnnotationName, "value"),
+            QLSchemaMappingFieldNameRefProvider()
+        )
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.MUTATION_MAPPING.qualifiedAnnotationName, "name"),
+            QLSchemaMappingFieldNameRefProvider()
+        )
+
+        // @SubscriptionMapping
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.SUBSCRIPTION_MAPPING.qualifiedAnnotationName, "value"),
+            QLSchemaMappingFieldNameRefProvider()
+        )
+        registrar.registerUastReferenceProvider(
+            ULiteralExpressionPattern().annotationParam(SchemaMappingType.SUBSCRIPTION_MAPPING.qualifiedAnnotationName, "name"),
+            QLSchemaMappingFieldNameRefProvider()
         )
     }
-
 }

@@ -4,5 +4,4 @@ package nl.jrdie.idea.springql.index
 interface QLIdeIndexBuildingProcessor<T, B : QLIdeIndex.Builder<B>> {
 
     fun process(t: T, indexBuilder: B): B
-
 }

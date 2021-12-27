@@ -25,6 +25,7 @@ plugins {
     id("org.jetbrains.intellij") version "1.3.0"
     id("org.jetbrains.changelog") version "1.3.1"
     id("org.jetbrains.qodana") version "0.1.13"
+    id("com.diffplug.spotless") version "6.1.0"
 }
 
 group = properties("pluginGroup")
@@ -32,6 +33,12 @@ version = properties("pluginVersion")
 
 repositories {
     mavenCentral()
+}
+
+spotless {
+    kotlin {
+        ktlint("0.43.2")
+    }
 }
 
 // https://github.com/JetBrains/gradle-intellij-plugin

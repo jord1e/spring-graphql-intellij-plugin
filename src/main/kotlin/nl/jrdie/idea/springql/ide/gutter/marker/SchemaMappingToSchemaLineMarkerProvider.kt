@@ -20,13 +20,14 @@ package nl.jrdie.idea.springql.ide.gutter.marker
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.nextLeaf
+import nl.jrdie.idea.springql.icons.QLIcons
 import nl.jrdie.idea.springql.svc.QLIdeService
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.toUElement
+import org.jetbrains.kotlin.idea.util.leaf
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElementOfType
 
 class SchemaMappingToSchemaLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
@@ -39,31 +40,44 @@ class SchemaMappingToSchemaLineMarkerProvider : RelatedItemLineMarkerProvider() 
             return
         }
 
-        val uElement = element.toUElement()
+        val uMethod = element.toUElementOfType<UMethod>()
 
-        if (uElement !is UAnnotation) {
+        if (uMethod !is UMethod) {
             return
         }
 
-        if (!svc.isSchemaMappingAnnotation(uElement)) {
-//            println("NOT A SCHEMA MAPPING ANNOTATION: ${uElement.qualifiedName}")
+        val mappingSummary = svc.getSummaryForMethod(uMethod)
+
+        println("Summary for ${uMethod.name} -> $mappingSummary")
+
+        if (mappingSummary == null) {
             return
         }
 
-        val index = svc.index.schemaMappingByAnnotation(uElement)
-        println("Index for $uElement: (${index.size}) $index")
-
-        val lineMarkerInfo = if (index.isEmpty() || index.none { it.schemaPsi.isNotEmpty() }) {
-            NavigationGutterIconBuilder.create(AllIcons.Gutter.WriteAccess)
+        val lineMarkerInfo = if (mappingSummary.schemaPsi == null) {
+            NavigationGutterIconBuilder.create(QLIcons.SpringGraphGutterGreyQL)
                 .setTooltipText("No schema declaration")
                 .setTargets(emptyList())
         } else {
-            NavigationGutterIconBuilder.create(AllIcons.Gutter.ReadAccess)
+            NavigationGutterIconBuilder.create(QLIcons.SpringGraphGutterGreenQL)
                 .setTooltipText("Navigate to schema declaration")
-                .setTargets(index.flatMap {it.schemaPsi}.mapNotNull { it?.nextLeaf() })
+                .setTargets(mappingSummary.schemaPsi)
         }
 
-        result.add(lineMarkerInfo.createLineMarkerInfo(element.nextLeaf()!!))
-    }
+        result.add(lineMarkerInfo.createLineMarkerInfo(mappingSummary.annotationPsi.nextLeaf()!!))
 
+//        val index = svc.index.schemaMappingByAnnotation(uMethod)
+//        println("Index for $uMethod: (${index.size}) $index")
+//
+//        val lineMarkerInfo = if (index.isEmpty() || index.none { it.schemaPsi.isNotEmpty() }) {
+//            NavigationGutterIconBuilder.create(QLIcons.SpringGraphGutterGreyQL)
+//                .setTooltipText("No schema declaration")
+//                .setTargets(emptyList())
+//        } else {
+//            NavigationGutterIconBuilder.create(QLIcons.SpringGraphGutterGreenQL)
+//                .setTooltipText("Navigate to schema declaration")
+//                .setTargets(index.flatMap { it.schemaPsi }.mapNotNull { it?.nextLeaf() })
+//        }
+
+    }
 }

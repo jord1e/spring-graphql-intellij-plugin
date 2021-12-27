@@ -1,6 +1,8 @@
 package nl.jrdie.idea.springql.svc;
 
+import com.intellij.lang.jsgraphql.schema.GraphQLSchemaInfo;
 import com.intellij.lang.jsgraphql.types.language.AbstractNode;
+import com.intellij.lang.jsgraphql.types.language.FieldDefinition;
 import com.intellij.lang.jsgraphql.types.language.ObjectTypeDefinition;
 import com.intellij.lang.jsgraphql.types.language.SourceLocation;
 import com.intellij.lang.jsgraphql.types.schema.idl.TypeDefinitionRegistry;
@@ -18,8 +20,20 @@ public class QLSchemaRegistry {
     @NotNull
     private final TypeDefinitionRegistry typeDefinitionRegistry;
 
-    public QLSchemaRegistry(TypeDefinitionRegistry typeDefinitionRegistry) {
+    @NotNull
+    private final GraphQLSchemaInfo graphQLSchemaInfo;
+
+    public QLSchemaRegistry(TypeDefinitionRegistry typeDefinitionRegistry, GraphQLSchemaInfo graphQLSchemaInfo) {
         this.typeDefinitionRegistry = Objects.requireNonNull(typeDefinitionRegistry, "typeDefinitionRegistry");
+        this.graphQLSchemaInfo = Objects.requireNonNull(graphQLSchemaInfo, "graphQLSchemaInfo");
+    }
+
+    public boolean hasObjectWithExactTypeName(@NotNull String typeName) {
+        Objects.requireNonNull(typeName, "typeName");
+
+        return typeDefinitionRegistry
+                .getType(typeName, ObjectTypeDefinition.class)
+                .isPresent();
     }
 
     @Nullable
@@ -50,8 +64,9 @@ public class QLSchemaRegistry {
                         .filter(fieldDefinition -> field.equals(fieldDefinition.getName()))
                         .map(AbstractNode::getSourceLocation)
                         .map(SourceLocation::getElement)
+                        .filter(Objects::nonNull)
 //                        .flatMap(List::stream)
-                        .collect(Collectors.toList()))
+                        .collect(Collectors.toUnmodifiableList()))
                 .orElse(Collections.emptyList());
     }
 
@@ -65,9 +80,43 @@ public class QLSchemaRegistry {
                 .orElse(null);
     }
 
+    @Nullable
+    public ObjectTypeDefinition getObjectTypeDefinition(@NotNull String typeName) {
+        Objects.requireNonNull(typeName, "typeName");
+
+        return typeDefinitionRegistry
+                .getType(typeName, ObjectTypeDefinition.class)
+                .orElse(null);
+    }
+
     @NotNull
     public List<ObjectTypeDefinition> getObjectDefinitions() {
         return Collections.unmodifiableList(typeDefinitionRegistry.getTypes(ObjectTypeDefinition.class));
     }
 
+    @NotNull
+    public List<FieldDefinition> getFieldDefinitions() {
+        return getObjectDefinitions()
+                .stream()
+                .map(ObjectTypeDefinition::getFieldDefinitions)
+                .flatMap(List::stream)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toUnmodifiableList());
+    }
+
+    @Nullable
+    public ObjectTypeDefinition getParentType(@NotNull FieldDefinition fieldDefinition) {
+        Objects.requireNonNull(fieldDefinition, "fieldDefinition");
+
+        return getObjectDefinitions()
+                .stream()
+                .filter(objectTypeDefinition -> objectTypeDefinition.getFieldDefinitions().contains(fieldDefinition))
+                .findFirst()
+                .orElse(null);
+    }
+
+    @NotNull
+    public GraphQLSchemaInfo getGraphQLSchemaInfo() {
+        return graphQLSchemaInfo;
+    }
 }

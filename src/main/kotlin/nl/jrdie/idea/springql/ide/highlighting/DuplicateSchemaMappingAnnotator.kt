@@ -31,7 +31,7 @@ import org.jetbrains.uast.toUElement
 class DuplicateSchemaMappingAnnotator : Annotator {
 
     override fun annotate(psiElement: PsiElement, holder: AnnotationHolder) {
-        val uElement = psiElement.toUElement();
+        val uElement = psiElement.toUElement()
         if (uElement !is UMethod) {
             return
         }

@@ -5,7 +5,13 @@ import com.intellij.lang.java.JavaLanguage;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaChangeTracker;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaInfo;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaProvider;
+import com.intellij.lang.jsgraphql.schema.library.GraphQLLibraryTypes;
+import com.intellij.lang.jsgraphql.types.language.FieldDefinition;
+import com.intellij.lang.jsgraphql.types.language.InputValueDefinition;
+import com.intellij.lang.jsgraphql.types.language.Node;
+import com.intellij.lang.jsgraphql.types.language.ObjectTypeDefinition;
 import com.intellij.lang.jsgraphql.types.schema.idl.TypeDefinitionRegistry;
+import com.intellij.lang.jsgraphql.types.schema.idl.TypeUtil;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -21,21 +27,33 @@ import com.intellij.psi.stubs.StubIndexKey;
 import com.intellij.psi.util.PsiModificationTracker;
 import nl.jrdie.idea.springql.index.MutableQLIdeIndex;
 import nl.jrdie.idea.springql.index.QLIdeIndex;
+import nl.jrdie.idea.springql.index.entry.QLClassSchemaMappingIndexEntry;
+import nl.jrdie.idea.springql.index.entry.QLMethodSchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.models.annotations.SchemaMappingType;
 import nl.jrdie.idea.springql.services.QLAnnotationIndexProcessor;
+import nl.jrdie.idea.springql.types.SchemaMappingSummary;
 import nl.jrdie.idea.springql.utils.QLIdeUtil;
+import nl.jrdie.idea.springql.utils.UExtKt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex;
 import org.jetbrains.kotlin.psi.KtAnnotationEntry;
 import org.jetbrains.uast.UAnnotation;
+import org.jetbrains.uast.UClass;
+import org.jetbrains.uast.UElement;
+import org.jetbrains.uast.ULiteralExpression;
 import org.jetbrains.uast.UMethod;
 import org.jetbrains.uast.UastContextKt;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
@@ -43,17 +61,20 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
             "SchemaMapping",
             "QueryMapping",
             "MutationMapping",
-            "SubscriptionMapping"
-//            "BatchMapping"
+            "SubscriptionMapping",
+            "BatchMapping"
     );
 
     private static final Set<String> SPRING_GRAPHQL_STANDARD_ANNOTATION_FQN = Set.of(
             "org.springframework.graphql.data.method.SchemaMapping",
             "org.springframework.graphql.data.method.QueryMapping",
             "org.springframework.graphql.data.method.MutationMapping",
-            "org.springframework.graphql.data.method.SubscriptionMapping"
-//            "org.springframework.graphql.data.method.BatchMapping"
+            "org.springframework.graphql.data.method.SubscriptionMapping",
+            "org.springframework.graphql.data.method.BatchMapping"
     );
+
+    // TODO Implement Spring meta-annotations.
+    private static final String SPRING_CONTROLLER_FQN = "org.springframework.stereotype.Controller";
 
     @NotNull
     private final Project project;
@@ -105,6 +126,8 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
         if (!forceReload && this.cachedIdeIndex != null && !updateAndCheckModified()) {
             return this.cachedIdeIndex;
         }
+
+        System.out.println("[" + LocalTime.now().withNano(0).format(DateTimeFormatter.ISO_LOCAL_TIME) + "] Reloading Spring GraphQL Support index");
 
         final StubIndex stubIndex = StubIndex.getInstance();
 
@@ -177,23 +200,24 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
         final GlobalSearchScope searchScope = GlobalSearchScope.allScope(this.project);
 
         final PsiType collectionType = PsiType.getTypeByName(CommonClassNames.JAVA_UTIL_COLLECTION, this.project, searchScope);
-        if (returnType.isAssignableFrom(collectionType)) {
+        if (collectionType.isAssignableFrom(returnType)) {
             return true;
         }
 
         final PsiType mapType = PsiType.getTypeByName(CommonClassNames.JAVA_UTIL_MAP, this.project, searchScope);
-        if (returnType.isAssignableFrom(mapType)) {
+        if (mapType.isAssignableFrom(returnType)) {
             return true;
         }
 
+        // TODO This only handles Mono<V>, but it should check for Mono<Map<K, V>>.
         final PsiType monoType = PsiType.getTypeByName("reactor.core.publisher.Mono", this.project, searchScope);
-        if (returnType.isAssignableFrom(monoType)) {
+        if (monoType.isAssignableFrom(returnType)) {
             return true;
         }
 
         final PsiType fluxType = PsiType.getTypeByName("reactor.core.publisher.Flux", this.project, searchScope);
         //noinspection RedundantIfStatement
-        if (returnType.isAssignableFrom(fluxType)) {
+        if (fluxType.isAssignableFrom(returnType)) {
             return true;
         }
 
@@ -209,10 +233,216 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
                         SPRING_GRAPHQL_STANDARD_ANNOTATION_FQN.contains(uAnnotation.getQualifiedName()));
     }
 
+    @Override
+    public boolean needsControllerAnnotation(@NotNull UClass uClass) {
+        Objects.requireNonNull(uClass, "uClass");
+
+        if (UExtKt.hasUAnnotation(uClass, SPRING_CONTROLLER_FQN)) {
+            return false;
+        }
+
+        //noinspection UnnecessaryLocalVariable
+        final boolean containsAnnotations = uClass.getUAnnotations()
+                .stream()
+                .anyMatch(uAnnotation -> isSchemaMappingAnnotation(uAnnotation)
+                        || isBatchMappingAnnotation(uAnnotation));
+
+        return containsAnnotations;
+    }
+
+    @Override
+    public boolean isIntrospectionNode(Node<?> node) {
+        if (node instanceof ObjectTypeDefinition) {
+            final ObjectTypeDefinition typeDefinition = (ObjectTypeDefinition) node;
+            return typeDefinition.getName().startsWith("__");
+        }
+        if (node instanceof FieldDefinition) {
+            return getSchemaRegistry()
+                    .getObjectDefinitions()
+                    .stream()
+                    .filter(typeDefinition -> typeDefinition.getName().startsWith("__"))
+                    .anyMatch(typeDefinition -> typeDefinition.getFieldDefinitions().contains(node));
+        }
+        return false;
+    }
+
+    private boolean hasFieldWithNameAndType(@NotNull ObjectTypeDefinition typeDefinition,
+                                            @NotNull String fieldName,
+                                            @NotNull String fieldType) {
+        Objects.requireNonNull(typeDefinition, "typeDefinition");
+        Objects.requireNonNull(fieldName, "fieldName");
+        Objects.requireNonNull(fieldType, "fieldType");
+        return typeDefinition.getFieldDefinitions()
+                .stream()
+                .anyMatch(fieldDefinition -> fieldDefinition != null
+                        && fieldDefinition.getType() != null
+                        && fieldName.equals(fieldDefinition.getName())
+                        && fieldType.equals(TypeUtil.simplePrint(fieldDefinition.getType())));
+    }
+
+    @Override
+    public boolean isApolloFederationSupportEnabled() {
+        return GraphQLLibraryTypes.FEDERATION.isEnabled(this.project);
+    }
+
+    @Nullable
+    @Override
+    public SchemaMappingSummary getSummaryForMethod(@NotNull UMethod uMethod) {
+        Objects.requireNonNull(uMethod, "uMethod");
+
+        List<QLMethodSchemaMappingIndexEntry> a = uMethod.getUAnnotations()
+                .stream()
+                .map(getIndex()::methodSchemaMappingByAnnotation)
+                .filter(set -> !set.isEmpty())
+                .flatMap(Set::stream)
+                .collect(Collectors.toUnmodifiableList());
+
+        if (a.isEmpty()) {
+            return null;
+        }
+
+        if (a.size() > 1) {
+            throw new IllegalStateException("Should not happen");
+        }
+
+        QLMethodSchemaMappingIndexEntry b = a.get(0);
+
+        String typeName = b.getParentType();
+        if (typeName == null || typeName.isEmpty()) {
+            UClass uClass = UastContextKt.getUastParentOfType(uMethod.getSourcePsi(), UClass.class);
+            if (uClass != null) {
+                Set<QLClassSchemaMappingIndexEntry> c = getIndex().schemaMappingByClass(uClass);
+
+                if (c.size() > 1) {
+                    throw new IllegalStateException("Should not happen - more then one Class -> @SchemaMapping mapping");
+                }
+                if (!c.isEmpty()) {
+                    QLClassSchemaMappingIndexEntry only = c.iterator().next(); // TODO Convert index to list
+                    typeName = only.getParentType();
+                }
+                // No parent
+                // TODO Check if parentType || typeName is null?
+            } else {
+                // TODO No parent type - what should we do?
+            }
+        }
+
+        if (typeName == null || typeName.isEmpty()) {
+            typeName = ""; // TODO
+        }
+
+        String fieldName = b.getField();
+        if (fieldName == null || fieldName.isEmpty()) {
+            fieldName = uMethod.getName(); // todo null check?
+        }
+
+        PsiElement schemaPsi = getSchemaRegistry().getSchemaPsiForObject(typeName, fieldName);
+
+        return new SchemaMappingSummary(
+                typeName,
+                fieldName,
+                b.getAnnotationPsi(),
+                schemaPsi,
+                b.getUAnnotation(),
+                QLIdeUtil.INSTANCE.reduceSchemaMappingAnnotationName(b.getUAnnotation())
+        );
+    }
+
+    @Override
+    public boolean isApolloFederationNode(Node<?> node) {
+        // See: https://github.com/jimkyndemeyer/js-graphql-intellij-plugin/blob/329fc22458a474ae807cd1d71d62d36b387392fc/resources/definitions/Federation.graphql
+        if (node instanceof FieldDefinition) {
+            FieldDefinition fieldDefinition = (FieldDefinition) node;
+            // sdl: String
+            if ("sdl".equals(fieldDefinition.getName())) {
+                ObjectTypeDefinition parentType = getSchemaRegistry().getParentType(fieldDefinition);
+                return (parentType != null && parentType.getName().equals("_Service")) ||
+                        "String".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
+            }
+            // _service: _Service!
+            if ("_service".equals(fieldDefinition.getName())) {
+                return "_Service".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
+            }
+            // _entities(representations: [_Any!]!): [_Entity]!
+            if ("_entities".equals(fieldDefinition.getName())) {
+                final List<InputValueDefinition> inputValueDefinitions = fieldDefinition.getInputValueDefinitions();
+                if (inputValueDefinitions.size() != 1) {
+                    return false;
+                }
+                final InputValueDefinition firstDefinition = inputValueDefinitions.get(0);
+                if (firstDefinition == null || !"representation".equals(firstDefinition.getName()) || !"[_Any!]!".equals(TypeUtil.simplePrint(firstDefinition.getType()))) {
+                    return false;
+                }
+                return "[_Entity]!".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
+            }
+        }
+        if (node instanceof ObjectTypeDefinition) {
+            ObjectTypeDefinition typeDefinition = (ObjectTypeDefinition) node;
+            if (typeDefinition.getName().equals("_Service")) {
+                return hasFieldWithNameAndType(typeDefinition, "sdl", "String");
+            }
+        }
+        return false;
+    }
+
+    @Nullable
+    @Override
+    public String findApplicableParentTypeName(@NotNull UAnnotation uAnnotation) {
+        Objects.requireNonNull(uAnnotation, "uAnnotation");
+
+        return QLIdeUtil.INSTANCE.getValue(uAnnotation, "typeName");
+    }
+
+    @Override
+    public List<UAnnotation> findNearestSchemaMappingAnnotations(UElement uElement) {
+        // I have no idea what I am doing in this method.
+
+        if (uElement instanceof UAnnotation) {
+            final UAnnotation uAnnotation = (UAnnotation) uElement;
+            if (isSchemaMappingAnnotation(uAnnotation)) {
+                return Collections.singletonList(uAnnotation);
+            } else {
+                return Collections.emptyList();
+            }
+        }
+
+        if (uElement instanceof UMethod) {
+            final UMethod uMethod = (UMethod) uElement;
+            return uMethod.getUAnnotations()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .filter(this::isSchemaMappingAnnotation)
+                    .collect(Collectors.toUnmodifiableList());
+        }
+
+        if (uElement instanceof UClass) {
+            final UClass uClass = (UClass) uElement;
+            return uClass.getUAnnotations()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .filter(this::isSchemaMappingAnnotation)
+                    .collect(Collectors.toUnmodifiableList());
+        }
+
+        if (uElement instanceof ULiteralExpression) {
+            final ULiteralExpression uLiteralExpression = (ULiteralExpression) uElement;
+            final UAnnotation uAnnotation = UastContextKt
+                    .getUastParentOfType(uLiteralExpression.getSourcePsi(), UAnnotation.class);
+
+            if (uAnnotation != null && isSchemaMappingAnnotation(uAnnotation)) {
+                return Collections.singletonList(uAnnotation);
+            } else {
+                return Collections.emptyList();
+            }
+        }
+
+        return null;
+    }
+
     @NotNull
     @Override
     public QLSchemaRegistry getSchemaRegistry() {
-        return new QLSchemaRegistry(getTypeDefinitionRegistry());
+        return new QLSchemaRegistry(getTypeDefinitionRegistry(), getGraphQLSchemaInfo());
 //        return Objects.requireNonNullElseGet(cachedSchemaRegistry,
 //                () -> cachedSchemaRegistry = new QLSchemaRegistry(getTypeDefinitionRegistry()));
     }

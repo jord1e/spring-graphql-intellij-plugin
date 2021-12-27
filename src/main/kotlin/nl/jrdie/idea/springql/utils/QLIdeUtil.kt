@@ -19,12 +19,19 @@ package nl.jrdie.idea.springql.utils
 
 import com.intellij.psi.PsiElement
 import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
-import org.jetbrains.uast.*
+import org.jetbrains.kotlin.util.prefixIfNot
+import org.jetbrains.projector.common.misc.firstNotNullOrNull
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.evaluateString
+import org.jetbrains.uast.getContainingUClass
+import org.jetbrains.uast.toUElement
 
 object QLIdeUtil {
 
-    fun getGraphQlField(uMethod: UMethod): String? {
-        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod).firstOrNull()
+    fun getGraphQlField(uMethod: UAnnotation): String? {
+        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod)
         if (annotationInfo == null) {
             return null
         }
@@ -42,7 +49,7 @@ object QLIdeUtil {
             return field
         }
 
-        return uMethod.name
+        return ""//todo
     }
 
     fun UAnnotation.getValue(attribute: String): String? {
@@ -52,7 +59,23 @@ object QLIdeUtil {
     }
 
     fun getSchemaMappingTypeName(uMethod: UMethod): String? {
-        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod).firstOrNull()
+        return uMethod.uAnnotations.firstNotNullOrNull { getSchemaMappingTypeName(it) }
+    }
+
+    fun getSchemaMappingTypeName(uMethod: UClass): String? {
+        return uMethod.uAnnotations.firstNotNullOrNull { getSchemaMappingTypeName(it) }
+    }
+
+    fun getGraphQlField(uMethod: UMethod): String? {
+        return uMethod.uAnnotations.firstNotNullOrNull { getGraphQlField(it) }
+    }
+
+    fun getGraphQlField(uMethod: UClass): String? {
+        return uMethod.uAnnotations.firstNotNullOrNull { getGraphQlField(it) }
+    }
+
+    fun getSchemaMappingTypeName(uMethod: UAnnotation): String? {
+        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod)
         if (annotationInfo == null) {
             // Handle case where @SchemaMapping(typeName = "MyType") annotation is present on the class.
             val classSchemaMappingName: String? = uMethod
@@ -75,7 +98,7 @@ object QLIdeUtil {
 
                 if (typeNameValue == null) {
                     // TODO
-                    return "MethodTypeOfFirstParam"
+                    return ""
                 }
 
                 return typeNameValue
@@ -105,6 +128,16 @@ object QLIdeUtil {
             }
     }
 
+    fun getSchemaMappingAnnotationInfo(uMethod: UClass): List<SchemaMappingAnnotationInfo> {
+        return uMethod
+            .uAnnotations
+            .mapNotNull { uAnnotation ->
+                SchemaMappingType
+                    .getSchemaMappingType(uAnnotation.qualifiedName!!)
+                    ?.let { mappingType -> SchemaMappingAnnotationInfo(uAnnotation, mappingType) }
+            }
+    }
+
     fun getSchemaMappingAnnotationInfo(uAnnotation: UAnnotation): SchemaMappingAnnotationInfo? {
         return SchemaMappingType.getSchemaMappingType(uAnnotation.qualifiedName!!)
             ?.let { SchemaMappingAnnotationInfo(uAnnotation, it) }
@@ -125,4 +158,28 @@ object QLIdeUtil {
     fun isBatchMappingAnnotation(uAnnotation: UAnnotation): Boolean {
         return uAnnotation.qualifiedName == "org.springframework.graphql.data.method.annotation.BatchMapping"
     }
+
+    fun isDefaultSchemaMappingAnnotation(uAnnotation: UAnnotation): Boolean {
+        return when (uAnnotation.qualifiedName) {
+            "org.springframework.graphql.data.method.annotation.SchemaMapping",
+            "org.springframework.graphql.data.method.annotation.QueryMapping",
+            "org.springframework.graphql.data.method.annotation.SubscriptionMapping",
+            "org.springframework.graphql.data.method.annotation.MutationMapping" -> true
+            else -> false
+        }
+    }
+
+    fun reduceSchemaMappingAnnotationName(uAnnotation: UAnnotation): String {
+        return when (uAnnotation.qualifiedName) {
+            "org.springframework.graphql.data.method.annotation.SchemaMapping" -> "@SchemaMapping"
+            "org.springframework.graphql.data.method.annotation.QueryMapping" -> "@QueryMapping"
+            "org.springframework.graphql.data.method.annotation.SubscriptionMapping" -> "@SubscriptionMapping"
+            "org.springframework.graphql.data.method.annotation.MutationMapping" -> "@MutationMapping"
+            "org.springframework.graphql.data.method.annotation.BatchMapping" -> "@BatchMapping"
+            else -> uAnnotation.qualifiedName?.split('.')?.dropWhile { it.first().isLowerCase() }
+                ?.joinToString(".")?.prefixIfNot("@")
+                ?: throw IllegalArgumentException("UAnnotation does not have a FQN: $uAnnotation")
+        }
+    }
+
 }

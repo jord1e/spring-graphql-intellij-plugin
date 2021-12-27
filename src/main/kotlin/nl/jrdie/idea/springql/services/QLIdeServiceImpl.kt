@@ -1,4 +1,4 @@
-///*
+// /*
 // * Copyright (C) 2021 Jordie
 // *
 // * This program is free software: you can redistribute it and/or modify
@@ -15,30 +15,30 @@
 // * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // */
 //
-//package nl.jrdie.idea.springql.services
+// package nl.jrdie.idea.springql.services
 //
-//import com.intellij.AppTopics
-//import com.intellij.ide.highlighter.JavaFileType
-//import com.intellij.lang.jsgraphql.schema.GraphQLSchemaChangeListener
-//import com.intellij.lang.jsgraphql.schema.GraphQLSchemaEventListener
-//import com.intellij.lang.jsgraphql.schema.GraphQLSchemaInfo
-//import com.intellij.lang.jsgraphql.schema.GraphQLSchemaProvider
-//import com.intellij.lang.jsgraphql.types.schema.idl.TypeDefinitionRegistry
-//import com.intellij.openapi.Disposable
-//import com.intellij.openapi.editor.Document
-//import com.intellij.openapi.fileEditor.FileDocumentManager
-//import com.intellij.openapi.fileEditor.FileDocumentManagerListener
-//import com.intellij.openapi.project.Project
-//import com.intellij.psi.PsiManager
-//import com.intellij.psi.impl.java.stubs.index.JavaStubIndexKeys
-//import com.intellij.psi.search.GlobalSearchScope
-//import com.intellij.psi.stubs.StubIndex
-//import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
-//import org.jetbrains.kotlin.idea.KotlinFileType
+// import com.intellij.AppTopics
+// import com.intellij.ide.highlighter.JavaFileType
+// import com.intellij.lang.jsgraphql.schema.GraphQLSchemaChangeListener
+// import com.intellij.lang.jsgraphql.schema.GraphQLSchemaEventListener
+// import com.intellij.lang.jsgraphql.schema.GraphQLSchemaInfo
+// import com.intellij.lang.jsgraphql.schema.GraphQLSchemaProvider
+// import com.intellij.lang.jsgraphql.types.schema.idl.TypeDefinitionRegistry
+// import com.intellij.openapi.Disposable
+// import com.intellij.openapi.editor.Document
+// import com.intellij.openapi.fileEditor.FileDocumentManager
+// import com.intellij.openapi.fileEditor.FileDocumentManagerListener
+// import com.intellij.openapi.project.Project
+// import com.intellij.psi.PsiManager
+// import com.intellij.psi.impl.java.stubs.index.JavaStubIndexKeys
+// import com.intellij.psi.search.GlobalSearchScope
+// import com.intellij.psi.stubs.StubIndex
+// import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
+// import org.jetbrains.kotlin.idea.KotlinFileType
 //
-//class QLIdeServiceImpl(
+// class QLIdeServiceImpl(
 //    private val project: Project
-//) : Disposable {
+// ) : Disposable {
 //
 //    private var annotationIndex: QLIdeIndex2? = null
 //
@@ -73,7 +73,7 @@
 //            GraphQLSchemaEventListener.TOPIC,
 //            GraphQLSchemaChangeListener {
 //                annotationIndex = null
-////                theNewIndex.annotationIndex.clear()
+// //                theNewIndex.annotationIndex.clear()
 //            }
 //        )
 //
@@ -87,42 +87,42 @@
 //                        JavaFileType.INSTANCE,
 //                        KotlinFileType.INSTANCE -> {
 //                            annotationIndex = null;
-////                            theNewIndex.annotationIndex.clear()
+// //                            theNewIndex.annotationIndex.clear()
 //                        }
 //                    }
 //                }
 //            }
 //        )
 //
-////        FileTypeIndex.processFiles(
-////            JavaFileType.INSTANCE,
-////            { file ->
-////                val psiFile = psiManager.findFile(file)
-////                if (psiFile != null) {
-////                    annotationIndexProcessor.process(psiFile)
-////                }
-////                true
-////            },
-////            GlobalSearchScope.getScopeRestrictedByFileTypes(
-////                GlobalSearchScope.projectScope(project),
-////                JavaFileType.INSTANCE
-////            )
-////        )
+// //        FileTypeIndex.processFiles(
+// //            JavaFileType.INSTANCE,
+// //            { file ->
+// //                val psiFile = psiManager.findFile(file)
+// //                if (psiFile != null) {
+// //                    annotationIndexProcessor.process(psiFile)
+// //                }
+// //                true
+// //            },
+// //            GlobalSearchScope.getScopeRestrictedByFileTypes(
+// //                GlobalSearchScope.projectScope(project),
+// //                JavaFileType.INSTANCE
+// //            )
+// //        )
 //
-////        FileTypeIndex.processFiles(
-////            KotlinFileType.INSTANCE,
-////            { file ->
-////                val psiFile = psiManager.findFile(file)
-////                if (psiFile != null) {
-////                    annotationIndexProcessor.process(psiFile)
-////                }
-////                true
-////            },
-////            GlobalSearchScope.getScopeRestrictedByFileTypes(
-////                GlobalSearchScope.projectScope(project),
-////                KotlinFileType.INSTANCE
-////            )
-////        )
+// //        FileTypeIndex.processFiles(
+// //            KotlinFileType.INSTANCE,
+// //            { file ->
+// //                val psiFile = psiManager.findFile(file)
+// //                if (psiFile != null) {
+// //                    annotationIndexProcessor.process(psiFile)
+// //                }
+// //                true
+// //            },
+// //            GlobalSearchScope.getScopeRestrictedByFileTypes(
+// //                GlobalSearchScope.projectScope(project),
+// //                KotlinFileType.INSTANCE
+// //            )
+// //        )
 //
 //        return theNewIndex
 //    }
@@ -145,4 +145,4 @@
 //        TODO("Not yet implemented")
 //    }
 //
-//}
+// }

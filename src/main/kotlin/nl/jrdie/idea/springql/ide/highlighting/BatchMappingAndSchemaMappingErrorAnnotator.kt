@@ -60,7 +60,7 @@ class BatchMappingAndSchemaMappingErrorAnnotator : Annotator {
             holder
                 .newAnnotation(
                     HighlightSeverity.ERROR,
-                    "Methods can not have both @SchemaMapping and @BatchMapping annotations at the same time"
+                    "Methods can not be annotated with @SchemaMapping and @BatchMapping at the same time"
                 )
                 .range(it.sourcePsi!!)
                 .create()

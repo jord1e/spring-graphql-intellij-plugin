@@ -25,6 +25,7 @@ import com.intellij.lang.jsgraphql.psi.GraphQLFieldDefinition
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.nextLeaf
+import nl.jrdie.idea.springql.icons.QLIcons
 import nl.jrdie.idea.springql.svc.QLIdeService
 
 class SchemaToSchemaMappingLineMarkerProvider : RelatedItemLineMarkerProvider() {
@@ -53,14 +54,14 @@ class SchemaToSchemaMappingLineMarkerProvider : RelatedItemLineMarkerProvider() 
 //        if (indexEntry.isNotEmpty()) {
         val lineMarkerInfo = NavigationGutterIconBuilder
 //                .create(AllIcons.Ide.Link)
-            .create(GraphQLIcons.UI.GraphQLToolWindow)
+            .create(QLIcons.SpringGraphGutterGreyQL)
 //            .setPopupTitle(
-////                    "Controller mappings for ${
-////                        GraphQLPsiUtil.getTypeName(
-////                            element,
-////                            null
-////                        )
-////                    }.${element.nameIdentifier.text}"
+// //                    "Controller mappings for ${
+// //                        GraphQLPsiUtil.getTypeName(
+// //                            element,
+// //                            null
+// //                        )
+// //                    }.${element.nameIdentifier.text}"
 //            )
             .setTooltipText("Navigate to controller mapping")
             .setTargets(index.mapNotNull { it.annotationPsi.nextLeaf() })
@@ -81,5 +82,4 @@ class SchemaToSchemaMappingLineMarkerProvider : RelatedItemLineMarkerProvider() 
 //            .createLineMarkerInfo(element)
 //        result.add(lineMarkerInfo)
     }
-
 }
