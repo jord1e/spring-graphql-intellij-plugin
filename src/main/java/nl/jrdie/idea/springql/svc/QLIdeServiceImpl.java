@@ -1,6 +1,5 @@
 package nl.jrdie.idea.springql.svc;
 
-import com.intellij.ide.projectView.ProjectView;
 import com.intellij.lang.java.JavaLanguage;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaChangeTracker;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaInfo;
@@ -13,6 +12,8 @@ import com.intellij.lang.jsgraphql.types.language.ObjectTypeDefinition;
 import com.intellij.lang.jsgraphql.types.schema.idl.TypeDefinitionRegistry;
 import com.intellij.lang.jsgraphql.types.schema.idl.TypeUtil;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.CommonClassNames;
@@ -29,8 +30,7 @@ import nl.jrdie.idea.springql.index.MutableQLIdeIndex;
 import nl.jrdie.idea.springql.index.QLIdeIndex;
 import nl.jrdie.idea.springql.index.entry.QLClassSchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.index.entry.QLMethodSchemaMappingIndexEntry;
-import nl.jrdie.idea.springql.models.annotations.SchemaMappingType;
-import nl.jrdie.idea.springql.services.QLAnnotationIndexProcessor;
+import nl.jrdie.idea.springql.index.processor.QLAnnotationIndexProcessor;
 import nl.jrdie.idea.springql.types.SchemaMappingSummary;
 import nl.jrdie.idea.springql.utils.QLIdeUtil;
 import nl.jrdie.idea.springql.utils.UExtKt;
@@ -45,10 +45,11 @@ import org.jetbrains.uast.ULiteralExpression;
 import org.jetbrains.uast.UMethod;
 import org.jetbrains.uast.UastContextKt;
 
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+import java.text.NumberFormat;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -56,6 +57,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class QLIdeServiceImpl implements QLIdeService, Disposable {
+
+    private static final Logger LOGGER = Logger.getInstance(QLIdeServiceImpl.class);
 
     private static final Set<String> SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS = Set.of(
             "SchemaMapping",
@@ -75,6 +78,8 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
     // TODO Implement Spring meta-annotations.
     private static final String SPRING_CONTROLLER_FQN = "org.springframework.stereotype.Controller";
+
+    private static final NumberFormat ENGLISH_NUMBER_FORMAT = NumberFormat.getIntegerInstance(Locale.ENGLISH);
 
     @NotNull
     private final Project project;
@@ -99,24 +104,16 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
         this.javaModificationCount = new AtomicLong(0);
         this.kotlinModificationCount = new AtomicLong(0);
         this.graphQLModificationCount = new AtomicLong(0);
-
-        registerGraphQLSchemaChangeListener();
-    }
-
-    private void registerGraphQLSchemaChangeListener() {
-        // TODO Check if this method is necessary.
-        //  It seems like counting changes via GraphQLSchemaChangeTracker is enough (see #getIndex).
-
-        // Automatically disposed when `this` service is disposed (we implement Disposable)
-//        project.getMessageBus().connect(this).subscribe(
-//                GraphQLSchemaChangeTracker.TOPIC,
-//                () -> getIndex(true) // Force reloading of the index when a schema file changes
-//        );
     }
 
     @NotNull
     @Override
     public QLIdeIndex getIndex(boolean forceReload) {
+        if (DumbService.isDumb(this.project)) {
+            return Objects.requireNonNullElseGet(this.cachedIdeIndex,
+                    () -> new MutableQLIdeIndex.MutableQLIdeIndexBuilder().build());
+        }
+
         // Only retrieve cached index if:
         //  1. Java, files were NOT modified
         //  2. Kotlin, files were NOT modified
@@ -127,7 +124,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
             return this.cachedIdeIndex;
         }
 
-        System.out.println("[" + LocalTime.now().withNano(0).format(DateTimeFormatter.ISO_LOCAL_TIME) + "] Reloading Spring GraphQL Support index");
+        final long startNanos = System.nanoTime();
 
         final StubIndex stubIndex = StubIndex.getInstance();
 
@@ -136,8 +133,9 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
         // Process standard annotations (Java)
         //  https://github.com/spring-projects/spring-graphql/tree/main/spring-graphql/src/main/java/org/springframework/graphql/data/method/annotation
+        final GlobalSearchScope searchScope = GlobalSearchScope.projectScope(this.project);
         for (String stubKey : SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS) {
-            stubIndex.processElements(JavaStubIndexKeys.ANNOTATIONS, stubKey, this.project, GlobalSearchScope.projectScope(this.project), PsiAnnotation.class, psiAnnotation -> {
+            stubIndex.processElements(JavaStubIndexKeys.ANNOTATIONS, stubKey, this.project, searchScope, PsiAnnotation.class, psiAnnotation -> {
                 UAnnotation uAnnotation = UastContextKt.toUElement(psiAnnotation, UAnnotation.class);
                 if (uAnnotation != null) {
                     indexBuilder.getAndUpdate(ib -> processor.process(uAnnotation, ib));
@@ -152,7 +150,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
                 return true;
             }
 
-            StubIndex.getElements(ktAnnotationKey, annotationKey, this.project, GlobalSearchScope.projectScope(this.project), KtAnnotationEntry.class).forEach(annotationEntry -> {
+            StubIndex.getElements(ktAnnotationKey, annotationKey, this.project, searchScope, KtAnnotationEntry.class).forEach(annotationEntry -> {
                 UAnnotation uAnnotation = UastContextKt.toUElement(annotationEntry, UAnnotation.class);
                 if (uAnnotation != null) {
                     indexBuilder.getAndUpdate(ib -> processor.process(uAnnotation, ib));
@@ -164,8 +162,10 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
         // TODO process non-standard annotations (Spring meta-annotations)
 
-        // TODO Is refreshing necessary?
-        ProjectView.getInstance(project).refresh();
+        final Duration indexTime = Duration.ofNanos(System.nanoTime() - startNanos);
+        LOGGER.info("Spring GraphQL Support " + (forceReload ? "forceful " : "") +
+                "indexing took " + indexTime.toMillis() + " ms ("
+                + ENGLISH_NUMBER_FORMAT.format(indexTime.toNanos()) + " ns)");
 
         return this.cachedIdeIndex = indexBuilder.get().build();
     }
@@ -179,7 +179,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
     @Override
     public boolean isSchemaMappingAnnotation(UAnnotation uAnnotation) {
         // TODO Implement Spring annotation model
-        return SchemaMappingType.Companion.isSchemaMappingAnnotation(uAnnotation.getQualifiedName());
+        return QLIdeUtil.INSTANCE.isDefaultSchemaMappingAnnotation(uAnnotation);
     }
 
     @Override
@@ -290,12 +290,9 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
     public SchemaMappingSummary getSummaryForMethod(@NotNull UMethod uMethod) {
         Objects.requireNonNull(uMethod, "uMethod");
 
-        List<QLMethodSchemaMappingIndexEntry> a = uMethod.getUAnnotations()
-                .stream()
-                .map(getIndex()::methodSchemaMappingByAnnotation)
-                .filter(set -> !set.isEmpty())
-                .flatMap(Set::stream)
-                .collect(Collectors.toUnmodifiableList());
+        QLIdeIndex index = getIndex();
+        List<QLMethodSchemaMappingIndexEntry> a = index
+                .methodSchemaMappingByMethod(uMethod);
 
         if (a.isEmpty()) {
             return null;
@@ -311,7 +308,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
         if (typeName == null || typeName.isEmpty()) {
             UClass uClass = UastContextKt.getUastParentOfType(uMethod.getSourcePsi(), UClass.class);
             if (uClass != null) {
-                Set<QLClassSchemaMappingIndexEntry> c = getIndex().schemaMappingByClass(uClass);
+                Set<QLClassSchemaMappingIndexEntry> c = index.schemaMappingByClass(uClass);
 
                 if (c.size() > 1) {
                     throw new IllegalStateException("Should not happen - more then one Class -> @SchemaMapping mapping");
@@ -390,7 +387,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
     public String findApplicableParentTypeName(@NotNull UAnnotation uAnnotation) {
         Objects.requireNonNull(uAnnotation, "uAnnotation");
 
-        return QLIdeUtil.INSTANCE.getValue(uAnnotation, "typeName");
+        return QLIdeUtil.INSTANCE.getSchemaMappingTypeName(uAnnotation);
     }
 
     @Override

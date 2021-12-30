@@ -17,142 +17,64 @@
 
 package nl.jrdie.idea.springql.utils
 
-import com.intellij.psi.PsiElement
-import nl.jrdie.idea.springql.models.annotations.SchemaMappingType
+import com.intellij.lang.jsgraphql.types.language.Type
+import com.intellij.lang.jsgraphql.types.schema.idl.TypeUtil
 import org.jetbrains.kotlin.util.prefixIfNot
-import org.jetbrains.projector.common.misc.firstNotNullOrNull
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.evaluateString
-import org.jetbrains.uast.getContainingUClass
-import org.jetbrains.uast.toUElement
 
 object QLIdeUtil {
 
-    fun getGraphQlField(uMethod: UAnnotation): String? {
-        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod)
-        if (annotationInfo == null) {
-            return null
-        }
+    const val SCHEMA_MAPPING_FQN = "org.springframework.graphql.data.method.annotation.SchemaMapping"
+    const val QUERY_MAPPING_FQN = "org.springframework.graphql.data.method.annotation.QueryMapping"
+    const val MUTATION_MAPPING_FQN = "org.springframework.graphql.data.method.annotation.MutationMapping"
+    const val SUBSCRIPTION_MAPPING_FQN = "org.springframework.graphql.data.method.annotation.SubscriptionMapping"
+    const val BATCH_MAPPING_FQN = "org.springframework.graphql.data.method.annotation.BatchMapping"
+    const val ARGUMENT_FQN = "org.springframework.graphql.data.method.annotation.Argument"
 
-        val field: String? = when (annotationInfo.mappingType) {
-            SchemaMappingType.SCHEMA_MAPPING -> annotationInfo.uAnnotation.getValue("field")
-                ?: annotationInfo.uAnnotation.getValue("value")
-            SchemaMappingType.MUTATION_MAPPING,
-            SchemaMappingType.QUERY_MAPPING,
-            SchemaMappingType.SUBSCRIPTION_MAPPING -> annotationInfo.uAnnotation.getValue("name")
-                ?: annotationInfo.uAnnotation.getValue("value")
+    fun getGraphQlField(uAnnotation: UAnnotation): String? {
+        val field: String? = when (uAnnotation.qualifiedName) {
+            SCHEMA_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "field")
+                ?: AliasForUtil.findValue(uAnnotation, "value")
+            QUERY_MAPPING_FQN,
+            MUTATION_MAPPING_FQN,
+            SUBSCRIPTION_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "name")
+                ?: AliasForUtil.findValue(uAnnotation, "value")
+            else -> null
         }
 
         if (field != null) {
             return field
         }
 
-        return ""//todo
-    }
-
-    fun UAnnotation.getValue(attribute: String): String? {
-        return this
-            .findAttributeValue(attribute)
-            ?.evaluateString()
+        return "" // todo
     }
 
     fun getSchemaMappingTypeName(uMethod: UMethod): String? {
-        return uMethod.uAnnotations.firstNotNullOrNull { getSchemaMappingTypeName(it) }
+        return uMethod.uAnnotations.mapNotNull { getSchemaMappingTypeName(it) }.firstOrNull()
     }
 
     fun getSchemaMappingTypeName(uMethod: UClass): String? {
-        return uMethod.uAnnotations.firstNotNullOrNull { getSchemaMappingTypeName(it) }
+        return uMethod.uAnnotations.mapNotNull { getSchemaMappingTypeName(it) }.firstOrNull()
     }
 
     fun getGraphQlField(uMethod: UMethod): String? {
-        return uMethod.uAnnotations.firstNotNullOrNull { getGraphQlField(it) }
+        return uMethod.uAnnotations.mapNotNull { getGraphQlField(it) }.firstOrNull()
     }
 
     fun getGraphQlField(uMethod: UClass): String? {
-        return uMethod.uAnnotations.firstNotNullOrNull { getGraphQlField(it) }
+        return uMethod.uAnnotations.mapNotNull { getGraphQlField(it) }.firstOrNull()
     }
 
-    fun getSchemaMappingTypeName(uMethod: UAnnotation): String? {
-        val annotationInfo = getSchemaMappingAnnotationInfo(uMethod)
-        if (annotationInfo == null) {
-            // Handle case where @SchemaMapping(typeName = "MyType") annotation is present on the class.
-            val classSchemaMappingName: String? = uMethod
-                .getContainingUClass()
-                ?.findAnnotation(SchemaMappingType.SCHEMA_MAPPING.qualifiedAnnotationName)
-                ?.getValue("typeName")
-
-            if (classSchemaMappingName != null) {
-                return classSchemaMappingName
-            }
-            return null
+    fun getSchemaMappingTypeName(uAnnotation: UAnnotation): String? {
+        return when (uAnnotation.qualifiedName) {
+            QUERY_MAPPING_FQN -> "Query"
+            MUTATION_MAPPING_FQN -> "Mutation"
+            SUBSCRIPTION_MAPPING_FQN -> "Subscription"
+            SCHEMA_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "typeName")
+            else -> null
         }
-
-        return when (annotationInfo.mappingType) {
-            SchemaMappingType.QUERY_MAPPING -> "Query"
-            SchemaMappingType.MUTATION_MAPPING -> "Mutation"
-            SchemaMappingType.SUBSCRIPTION_MAPPING -> "Subscription"
-            SchemaMappingType.SCHEMA_MAPPING -> {
-                val typeNameValue = annotationInfo.uAnnotation.getValue("typeName")
-
-                if (typeNameValue == null) {
-                    // TODO
-                    return ""
-                }
-
-                return typeNameValue
-            }
-        }
-//        val annotationField = SpringAliasForUtils.findAliasFor(
-//            annotationInfo.uAnnotation.sourcePsi,
-//            "org.springframework.graphql.data.method.annotation",
-//            annotationInfo.mappingType.qualifiedAnnotationName,
-//            "typeName",
-//        )
-//
-//        if (annotationField?.annotation != null) {
-//            return getAnnotationAttributeValue(annotationInfo.uAnnotation, annotationField.attributeName)
-//        }
-//
-//        return null // TODO MethodParameter
-    }
-
-    fun getSchemaMappingAnnotationInfo(uMethod: UMethod): List<SchemaMappingAnnotationInfo> {
-        return uMethod
-            .uAnnotations
-            .mapNotNull { uAnnotation ->
-                SchemaMappingType
-                    .getSchemaMappingType(uAnnotation.qualifiedName!!)
-                    ?.let { mappingType -> SchemaMappingAnnotationInfo(uAnnotation, mappingType) }
-            }
-    }
-
-    fun getSchemaMappingAnnotationInfo(uMethod: UClass): List<SchemaMappingAnnotationInfo> {
-        return uMethod
-            .uAnnotations
-            .mapNotNull { uAnnotation ->
-                SchemaMappingType
-                    .getSchemaMappingType(uAnnotation.qualifiedName!!)
-                    ?.let { mappingType -> SchemaMappingAnnotationInfo(uAnnotation, mappingType) }
-            }
-    }
-
-    fun getSchemaMappingAnnotationInfo(uAnnotation: UAnnotation): SchemaMappingAnnotationInfo? {
-        return SchemaMappingType.getSchemaMappingType(uAnnotation.qualifiedName!!)
-            ?.let { SchemaMappingAnnotationInfo(uAnnotation, it) }
-    }
-
-    fun isSchemaMappingMethod(psiElement: PsiElement): Boolean {
-        val uElement = psiElement.toUElement()
-        if (uElement !is UMethod) {
-            return false
-        }
-        return getSchemaMappingAnnotationInfo(uElement) != null
-    }
-
-    fun isSchemaMappingAnnotation(uAnnotation: UAnnotation): Boolean {
-        return SchemaMappingType.isSchemaMappingAnnotation(uAnnotation.qualifiedName)
     }
 
     fun isBatchMappingAnnotation(uAnnotation: UAnnotation): Boolean {
@@ -182,4 +104,8 @@ object QLIdeUtil {
         }
     }
 
+    @JvmStatic
+    fun Type<*>.printTypeVal(): String {
+        return TypeUtil.simplePrint(this)
+    }
 }

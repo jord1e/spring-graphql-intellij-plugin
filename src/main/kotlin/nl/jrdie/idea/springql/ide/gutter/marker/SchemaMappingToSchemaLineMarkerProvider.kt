@@ -25,7 +25,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.nextLeaf
 import nl.jrdie.idea.springql.icons.QLIcons
 import nl.jrdie.idea.springql.svc.QLIdeService
-import org.jetbrains.kotlin.idea.util.leaf
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 
@@ -48,7 +47,7 @@ class SchemaMappingToSchemaLineMarkerProvider : RelatedItemLineMarkerProvider() 
 
         val mappingSummary = svc.getSummaryForMethod(uMethod)
 
-        println("Summary for ${uMethod.name} -> $mappingSummary")
+//        println("Summary for ${uMethod.name} -> $mappingSummary")
 
         if (mappingSummary == null) {
             return
@@ -65,19 +64,5 @@ class SchemaMappingToSchemaLineMarkerProvider : RelatedItemLineMarkerProvider() 
         }
 
         result.add(lineMarkerInfo.createLineMarkerInfo(mappingSummary.annotationPsi.nextLeaf()!!))
-
-//        val index = svc.index.schemaMappingByAnnotation(uMethod)
-//        println("Index for $uMethod: (${index.size}) $index")
-//
-//        val lineMarkerInfo = if (index.isEmpty() || index.none { it.schemaPsi.isNotEmpty() }) {
-//            NavigationGutterIconBuilder.create(QLIcons.SpringGraphGutterGreyQL)
-//                .setTooltipText("No schema declaration")
-//                .setTargets(emptyList())
-//        } else {
-//            NavigationGutterIconBuilder.create(QLIcons.SpringGraphGutterGreenQL)
-//                .setTooltipText("Navigate to schema declaration")
-//                .setTargets(index.flatMap { it.schemaPsi }.mapNotNull { it?.nextLeaf() })
-//        }
-
     }
 }

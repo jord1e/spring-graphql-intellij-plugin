@@ -28,5 +28,4 @@ object QLIcons {
     val Subscription = getIcon("/nl/jrdie/idea/springql/icons/subscription.svg")
     val Type = getIcon("/nl/jrdie/idea/springql/icons/type.svg")
     val Variable = getIcon("/nl/jrdie/idea/springql/icons/variable.svg")
-
 }

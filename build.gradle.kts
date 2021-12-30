@@ -39,6 +39,19 @@ spotless {
     kotlin {
         ktlint("0.43.2")
     }
+    java {
+        googleJavaFormat("1.13.0")
+    }
+    format("prettier") {
+        target(
+            "/*.md",
+            "/*.yml",
+            "/.github/**/*.yml",
+            "/src/main/resources/META-INF/plugin.xml",
+            "/src/main/resources/inspectionDescriptions/*.html"
+        )
+        prettier("2.5.1")
+    }
 }
 
 // https://github.com/JetBrains/gradle-intellij-plugin

@@ -5,7 +5,6 @@ import com.intellij.ide.projectView.ProjectViewNode
 import com.intellij.ide.projectView.TreeStructureProvider
 import com.intellij.ide.projectView.ViewSettings
 import com.intellij.ide.util.treeView.AbstractTreeNode
-import com.intellij.lang.jsgraphql.icons.GraphQLIcons
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -51,9 +50,7 @@ class QLRootNode(
         return list
     }
 
-    // We do not reference files.
     override fun contains(file: VirtualFile) = false
-
 }
 
 class QLSchemaMappingRootNode(
@@ -74,9 +71,7 @@ class QLSchemaMappingRootNode(
             .toMutableList()
     }
 
-    // We do not reference files.
     override fun contains(file: VirtualFile) = false
-
 }
 
 class QLSchemaMappingNode(
@@ -102,7 +97,8 @@ class QLSchemaMappingNode(
                     annotationElement.project,
                     annotationElement.containingFile.virtualFile,
                     annotationElement.textOffset
-                ), true
+                ),
+                true
             )
     }
 
@@ -111,5 +107,4 @@ class QLSchemaMappingNode(
     override fun canNavigateToSource() = true
 
     override fun isAlwaysLeaf() = true
-
 }

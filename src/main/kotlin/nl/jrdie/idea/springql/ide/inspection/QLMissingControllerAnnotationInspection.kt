@@ -1,15 +1,16 @@
-package nl.jrdie.idea.springql.ide.hints
+package nl.jrdie.idea.springql.ide.inspection
 
 import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.components.service
+import nl.jrdie.idea.springql.ide.quickfix.QLAddControllerAnnotationQuickFix
 import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UClass
 
 @Suppress("FoldInitializerAndIfToElvis")
-class QLMissingControllerInspector : AbstractBaseUastLocalInspectionTool() {
+class QLMissingControllerAnnotationInspection : AbstractBaseUastLocalInspectionTool(UClass::class.java) {
 
     override fun checkClass(
         uClass: UClass,
@@ -32,7 +33,7 @@ class QLMissingControllerInspector : AbstractBaseUastLocalInspectionTool() {
 
         val problemDescriptor = manager.createProblemDescriptor(
             uClass.sourcePsi!!,
-            "Add @Controller annoation",
+            "Add @Controller annotation",
             QLAddControllerAnnotationQuickFix(),
             ProblemHighlightType.WARNING,
             isOnTheFly
@@ -40,5 +41,4 @@ class QLMissingControllerInspector : AbstractBaseUastLocalInspectionTool() {
 
         return arrayOf(problemDescriptor)
     }
-
 }

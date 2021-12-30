@@ -20,23 +20,17 @@ package nl.jrdie.idea.springql.ide.completion
 import com.intellij.psi.PsiReference
 import com.intellij.psi.UastReferenceProvider
 import com.intellij.util.ProcessingContext
-import nl.jrdie.idea.springql.ide.references.GraphQlTypeNameReference
+import nl.jrdie.idea.springql.references.QLTypeNamePolyReference
 import org.jetbrains.uast.UElement
-import org.jetbrains.uast.ULiteralExpression
 import org.jetbrains.uast.UNamedExpression
+import org.jetbrains.uast.expressions.UInjectionHost
 import org.jetbrains.uast.getParentOfType
-import org.jetbrains.uast.kotlin.KotlinStringULiteralExpression
 
-class QLSchemaMappingTypeNameRefProvider : UastReferenceProvider(ULiteralExpression::class.java) {
+class QLSchemaMappingTypeNameRefProvider : UastReferenceProvider(UInjectionHost::class.java) {
 
     override fun getReferencesByElement(element: UElement, context: ProcessingContext): Array<PsiReference> {
-        if (element !is ULiteralExpression) {
+        if (element !is UInjectionHost) {
             throw IllegalStateException("Should not happen")
-        }
-
-        // TODO Fix this bug with Kotlin.
-        if (element is KotlinStringULiteralExpression) {
-            return PsiReference.EMPTY_ARRAY
         }
 
         if (element.sourcePsi?.project == null) {
@@ -48,6 +42,6 @@ class QLSchemaMappingTypeNameRefProvider : UastReferenceProvider(ULiteralExpress
             return PsiReference.EMPTY_ARRAY
         }
 
-        return arrayOf(GraphQlTypeNameReference(element.sourcePsi!!))
+        return arrayOf(QLTypeNamePolyReference(element.sourcePsi!!))
     }
 }

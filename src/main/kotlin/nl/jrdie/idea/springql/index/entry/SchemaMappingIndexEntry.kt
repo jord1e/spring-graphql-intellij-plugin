@@ -14,5 +14,4 @@ sealed interface SchemaMappingIndexEntry {
     val uAnnotation: UAnnotation
 
     val schemaPsi: List<PsiElement>
-
 }

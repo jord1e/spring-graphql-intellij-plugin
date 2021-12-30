@@ -1,4 +1,4 @@
-package nl.jrdie.idea.springql.ide
+package nl.jrdie.idea.springql.ide.codeInsight
 
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.openapi.components.service

@@ -20,7 +20,6 @@ package nl.jrdie.idea.springql.ide.gutter.marker
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
-import com.intellij.lang.jsgraphql.icons.GraphQLIcons
 import com.intellij.lang.jsgraphql.psi.GraphQLFieldDefinition
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement

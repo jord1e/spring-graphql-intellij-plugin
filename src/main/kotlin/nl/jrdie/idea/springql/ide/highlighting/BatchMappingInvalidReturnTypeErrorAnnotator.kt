@@ -51,9 +51,7 @@ class BatchMappingInvalidReturnTypeErrorAnnotator : Annotator {
             return
         }
 
-        // Annotate (highlight) offending annotations.
         for (it in isBatchMapping) {
-            println("Annotating (x) ${it.qualifiedName}")
             holder
                 .newAnnotation(
                     HighlightSeverity.ERROR,

@@ -1,13 +1,16 @@
 package nl.jrdie.idea.springql.index
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
 import com.intellij.util.containers.filterSmart
 import nl.jrdie.idea.springql.index.entry.QLClassSchemaMappingIndexEntry
 import nl.jrdie.idea.springql.index.entry.QLMethodBatchMappingIndexEntry
 import nl.jrdie.idea.springql.index.entry.QLMethodSchemaMappingIndexEntry
 import nl.jrdie.idea.springql.index.entry.SchemaMappingIndexEntry
+import okhttp3.internal.toImmutableList
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UMethod
 
 class MutableQLIdeIndex(
     private val methodSchemaMappingEntries: Set<QLMethodSchemaMappingIndexEntry>,
@@ -27,6 +30,14 @@ class MutableQLIdeIndex(
         return methodSchemaMappingEntries
             .filterSmart { it.annotationPsi == uAnnotation.sourcePsi }
             .toSet()
+    }
+
+    override fun methodSchemaMappingByMethod(uMethod: UMethod): List<QLMethodSchemaMappingIndexEntry> {
+        return methodSchemaMappingEntries
+            .filterSmart {
+                PsiManager.getInstance(it.methodPsi.project).areElementsEquivalent(it.methodPsi, uMethod.sourcePsi)
+            }
+            .toImmutableList()
     }
 
     override fun schemaMappingByClass(uClass: UClass): Set<QLClassSchemaMappingIndexEntry> {

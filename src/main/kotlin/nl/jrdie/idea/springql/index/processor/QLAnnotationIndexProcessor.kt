@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package nl.jrdie.idea.springql.services
+package nl.jrdie.idea.springql.index.processor
 
 import com.intellij.psi.PsiElement
 import nl.jrdie.idea.springql.index.QLIdeIndex
@@ -75,8 +75,6 @@ class QLAnnotationIndexProcessor<B : QLIdeIndex.Builder<B>>(
             else -> listOf()
         }
 
-//        println("Added Method SchemaMapping $typeName.$field -> $schemaPsi")
-
         return indexBuilder.withMethodSchemaMapping(
             QLMethodSchemaMappingIndexEntry(
                 uMethod.sourcePsi!!,
@@ -93,7 +91,6 @@ class QLAnnotationIndexProcessor<B : QLIdeIndex.Builder<B>>(
         val typeName = QLIdeUtil.getSchemaMappingTypeName(uMethod)
         val field = QLIdeUtil.getGraphQlField(uMethod)
 
-//        val schemaPsi = ideService.schemaRegistry.getSchemaPsiForObject(typeName, field)
         val schemaPsi: List<PsiElement> = when {
             typeName != null && field != null -> ideService.schemaRegistry.getAllSchemaPsiForObject(typeName, field)
             typeName != null -> {
@@ -102,8 +99,6 @@ class QLAnnotationIndexProcessor<B : QLIdeIndex.Builder<B>>(
             }
             else -> listOf()
         }
-
-//        println("Added Method BatchMapping $typeName.$field -> $schemaPsi")
 
         return indexBuilder.withMethodBatchMapping(
             QLMethodBatchMappingIndexEntry(
@@ -129,8 +124,6 @@ class QLAnnotationIndexProcessor<B : QLIdeIndex.Builder<B>>(
             }
             else -> listOf()
         }
-
-//        println("Added Class SchemaMapping $typeName(.$field) -> $schemaPsi")
 
         return indexBuilder.withClassSchemaMapping(
             QLClassSchemaMappingIndexEntry(

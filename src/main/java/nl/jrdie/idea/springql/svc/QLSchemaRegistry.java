@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class QLSchemaRegistry {
@@ -38,6 +39,14 @@ public class QLSchemaRegistry {
 
     @Nullable
     public PsiElement getSchemaPsiForObject(@NotNull String typeName, @NotNull String field) {
+        return Optional.ofNullable(getFieldDefinition(typeName, field))
+                .map(AbstractNode::getSourceLocation)
+                .map(SourceLocation::getElement)
+                .orElse(null);
+    }
+
+    @Nullable
+    public FieldDefinition getFieldDefinition(@NotNull String typeName, @NotNull String field) {
         Objects.requireNonNull(typeName, "typeName");
         Objects.requireNonNull(field, "field");
 
@@ -47,8 +56,6 @@ public class QLSchemaRegistry {
                         .stream()
                         .filter(fieldDefinition -> field.equals(fieldDefinition.getName()))
                         .findFirst())
-                .map(AbstractNode::getSourceLocation)
-                .map(SourceLocation::getElement)
                 .orElse(null);
     }
 

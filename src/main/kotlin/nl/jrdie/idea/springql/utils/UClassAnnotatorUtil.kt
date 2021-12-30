@@ -41,5 +41,4 @@ object UClassAnnotatorUtil {
 
         throw IllegalArgumentException("Can not apply annotation '$fqName' to element $sourcePsi (FQN: ${sourcePsi::class.qualifiedName})")
     }
-
 }

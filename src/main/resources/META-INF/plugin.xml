@@ -39,12 +39,12 @@
 
         <localInspection language="UAST" enabledByDefault="true" groupKey="nl.jrdie.idea.springql.ui.grouping"
                          key="nl.jrdie.idea.springql.inspection.missing.controller"
-                         implementationClass="nl.jrdie.idea.springql.ide.hints.QLMissingControllerInspector"/>
+                         implementationClass="nl.jrdie.idea.springql.ide.inspection.QLMissingControllerAnnotationInspection"/>
 
-        <implicitUsageProvider implementation="nl.jrdie.idea.springql.ide.QLImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="nl.jrdie.idea.springql.ide.codeInsight.QLImplicitUsageProvider"/>
 
         <psi.referenceContributor language="JAVA"
-                                  implementation="nl.jrdie.idea.springql.ide.completion.SchemaMappingContributor"/>
+                                  implementation="nl.jrdie.idea.springql.ide.completion.contributor.SchemaMappingContributor"/>
 
         <annotator language="UAST"
                    implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingDoesNotExistAnnotator"/>

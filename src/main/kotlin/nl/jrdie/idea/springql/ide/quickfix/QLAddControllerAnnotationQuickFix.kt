@@ -1,4 +1,4 @@
-package nl.jrdie.idea.springql.ide.hints
+package nl.jrdie.idea.springql.ide.quickfix
 
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -14,5 +14,4 @@ class QLAddControllerAnnotationQuickFix : LocalQuickFix {
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         UClassAnnotatorUtil.addAnnotation(descriptor.psiElement!!, "org.springframework.stereotype.Controller")
     }
-
 }
