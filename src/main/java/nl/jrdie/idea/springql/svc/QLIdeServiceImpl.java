@@ -58,447 +58,486 @@ import java.util.stream.Collectors;
 
 public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
-    private static final Logger LOGGER = Logger.getInstance(QLIdeServiceImpl.class);
+  private static final Logger LOGGER = Logger.getInstance(QLIdeServiceImpl.class);
 
-    private static final Set<String> SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS = Set.of(
-            "SchemaMapping",
-            "QueryMapping",
-            "MutationMapping",
-            "SubscriptionMapping",
-            "BatchMapping"
-    );
+  private static final Set<String> SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS =
+      Set.of(
+          "SchemaMapping",
+          "QueryMapping",
+          "MutationMapping",
+          "SubscriptionMapping",
+          "BatchMapping");
 
-    private static final Set<String> SPRING_GRAPHQL_STANDARD_ANNOTATION_FQN = Set.of(
-            "org.springframework.graphql.data.method.SchemaMapping",
-            "org.springframework.graphql.data.method.QueryMapping",
-            "org.springframework.graphql.data.method.MutationMapping",
-            "org.springframework.graphql.data.method.SubscriptionMapping",
-            "org.springframework.graphql.data.method.BatchMapping"
-    );
+  private static final Set<String> SPRING_GRAPHQL_STANDARD_ANNOTATION_FQN =
+      Set.of(
+          "org.springframework.graphql.data.method.SchemaMapping",
+          "org.springframework.graphql.data.method.QueryMapping",
+          "org.springframework.graphql.data.method.MutationMapping",
+          "org.springframework.graphql.data.method.SubscriptionMapping",
+          "org.springframework.graphql.data.method.BatchMapping");
 
-    // TODO Implement Spring meta-annotations.
-    private static final String SPRING_CONTROLLER_FQN = "org.springframework.stereotype.Controller";
+  // TODO Implement Spring meta-annotations.
+  private static final String SPRING_CONTROLLER_FQN = "org.springframework.stereotype.Controller";
 
-    private static final NumberFormat ENGLISH_NUMBER_FORMAT = NumberFormat.getIntegerInstance(Locale.ENGLISH);
+  private static final NumberFormat ENGLISH_NUMBER_FORMAT =
+      NumberFormat.getIntegerInstance(Locale.ENGLISH);
 
-    @NotNull
-    private final Project project;
+  @NotNull private final Project project;
 
-    @Nullable
-    private QLSchemaRegistry cachedSchemaRegistry;
+  @Nullable private QLSchemaRegistry cachedSchemaRegistry;
 
-    @Nullable
-    private QLIdeIndex cachedIdeIndex;
+  @Nullable private QLIdeIndex cachedIdeIndex;
 
-    @NotNull
-    private final AtomicLong javaModificationCount;
+  @NotNull private final AtomicLong javaModificationCount;
 
-    @NotNull
-    private final AtomicLong kotlinModificationCount;
+  @NotNull private final AtomicLong kotlinModificationCount;
 
-    @NotNull
-    private final AtomicLong graphQLModificationCount;
+  @NotNull private final AtomicLong graphQLModificationCount;
 
-    public QLIdeServiceImpl(Project project) {
-        this.project = Objects.requireNonNull(project, "project");
-        this.javaModificationCount = new AtomicLong(0);
-        this.kotlinModificationCount = new AtomicLong(0);
-        this.graphQLModificationCount = new AtomicLong(0);
+  public QLIdeServiceImpl(Project project) {
+    this.project = Objects.requireNonNull(project, "project");
+    this.javaModificationCount = new AtomicLong(0);
+    this.kotlinModificationCount = new AtomicLong(0);
+    this.graphQLModificationCount = new AtomicLong(0);
+  }
+
+  @NotNull
+  @Override
+  public QLIdeIndex getIndex(boolean forceReload) {
+    if (DumbService.isDumb(this.project)) {
+      return Objects.requireNonNullElseGet(
+          this.cachedIdeIndex, () -> new MutableQLIdeIndex.MutableQLIdeIndexBuilder().build());
     }
 
-    @NotNull
-    @Override
-    public QLIdeIndex getIndex(boolean forceReload) {
-        if (DumbService.isDumb(this.project)) {
-            return Objects.requireNonNullElseGet(this.cachedIdeIndex,
-                    () -> new MutableQLIdeIndex.MutableQLIdeIndexBuilder().build());
-        }
+    // Only retrieve cached index if:
+    //  1. Java, files were NOT modified
+    //  2. Kotlin, files were NOT modified
+    //  3. GraphQL, files were NOT modified
+    //  4. `forceReload` is `false`
+    //  5. A cached index is available
+    if (!forceReload && this.cachedIdeIndex != null && !updateAndCheckModified()) {
+      return this.cachedIdeIndex;
+    }
 
-        // Only retrieve cached index if:
-        //  1. Java, files were NOT modified
-        //  2. Kotlin, files were NOT modified
-        //  3. GraphQL, files were NOT modified
-        //  4. `forceReload` is `false`
-        //  5. A cached index is available
-        if (!forceReload && this.cachedIdeIndex != null && !updateAndCheckModified()) {
-            return this.cachedIdeIndex;
-        }
+    final long startNanos = System.nanoTime();
 
-        final long startNanos = System.nanoTime();
+    final StubIndex stubIndex = StubIndex.getInstance();
 
-        final StubIndex stubIndex = StubIndex.getInstance();
+    final AtomicReference<MutableQLIdeIndex.MutableQLIdeIndexBuilder> indexBuilder =
+        new AtomicReference<>(new MutableQLIdeIndex.MutableQLIdeIndexBuilder());
+    final QLAnnotationIndexProcessor<MutableQLIdeIndex.MutableQLIdeIndexBuilder> processor =
+        new QLAnnotationIndexProcessor<>(this);
 
-        final AtomicReference<MutableQLIdeIndex.MutableQLIdeIndexBuilder> indexBuilder = new AtomicReference<>(new MutableQLIdeIndex.MutableQLIdeIndexBuilder());
-        final QLAnnotationIndexProcessor<MutableQLIdeIndex.MutableQLIdeIndexBuilder> processor = new QLAnnotationIndexProcessor<>(this);
-
-        // Process standard annotations (Java)
-        //  https://github.com/spring-projects/spring-graphql/tree/main/spring-graphql/src/main/java/org/springframework/graphql/data/method/annotation
-        final GlobalSearchScope searchScope = GlobalSearchScope.projectScope(this.project);
-        for (String stubKey : SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS) {
-            stubIndex.processElements(JavaStubIndexKeys.ANNOTATIONS, stubKey, this.project, searchScope, PsiAnnotation.class, psiAnnotation -> {
-                UAnnotation uAnnotation = UastContextKt.toUElement(psiAnnotation, UAnnotation.class);
-                if (uAnnotation != null) {
-                    indexBuilder.getAndUpdate(ib -> processor.process(uAnnotation, ib));
-                }
-                return true;
-            });
-        }
-
-        final StubIndexKey<String, KtAnnotationEntry> ktAnnotationKey = KotlinAnnotationsIndex.getInstance().getKey();
-        stubIndex.processAllKeys(ktAnnotationKey, this.project, annotationKey -> {
-            if (!SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS.contains(annotationKey)) {
-                return true;
+    // Process standard annotations (Java)
+    //
+    // https://github.com/spring-projects/spring-graphql/tree/main/spring-graphql/src/main/java/org/springframework/graphql/data/method/annotation
+    final GlobalSearchScope searchScope = GlobalSearchScope.projectScope(this.project);
+    for (String stubKey : SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS) {
+      stubIndex.processElements(
+          JavaStubIndexKeys.ANNOTATIONS,
+          stubKey,
+          this.project,
+          searchScope,
+          PsiAnnotation.class,
+          psiAnnotation -> {
+            UAnnotation uAnnotation = UastContextKt.toUElement(psiAnnotation, UAnnotation.class);
+            if (uAnnotation != null) {
+              indexBuilder.getAndUpdate(ib -> processor.process(uAnnotation, ib));
             }
-
-            StubIndex.getElements(ktAnnotationKey, annotationKey, this.project, searchScope, KtAnnotationEntry.class).forEach(annotationEntry -> {
-                UAnnotation uAnnotation = UastContextKt.toUElement(annotationEntry, UAnnotation.class);
-                if (uAnnotation != null) {
-                    indexBuilder.getAndUpdate(ib -> processor.process(uAnnotation, ib));
-                }
-            });
-
             return true;
+          });
+    }
+
+    final StubIndexKey<String, KtAnnotationEntry> ktAnnotationKey =
+        KotlinAnnotationsIndex.getInstance().getKey();
+    stubIndex.processAllKeys(
+        ktAnnotationKey,
+        this.project,
+        annotationKey -> {
+          if (!SPRING_GRAPHQL_STANDARD_ANNOTATION_STUB_KEYS.contains(annotationKey)) {
+            return true;
+          }
+
+          StubIndex.getElements(
+                  ktAnnotationKey,
+                  annotationKey,
+                  this.project,
+                  searchScope,
+                  KtAnnotationEntry.class)
+              .forEach(
+                  annotationEntry -> {
+                    UAnnotation uAnnotation =
+                        UastContextKt.toUElement(annotationEntry, UAnnotation.class);
+                    if (uAnnotation != null) {
+                      indexBuilder.getAndUpdate(ib -> processor.process(uAnnotation, ib));
+                    }
+                  });
+
+          return true;
         });
 
-        // TODO process non-standard annotations (Spring meta-annotations)
+    // TODO process non-standard annotations (Spring meta-annotations)
 
-        final Duration indexTime = Duration.ofNanos(System.nanoTime() - startNanos);
-        LOGGER.info("Spring GraphQL Support " + (forceReload ? "forceful " : "") +
-                "indexing took " + indexTime.toMillis() + " ms ("
-                + ENGLISH_NUMBER_FORMAT.format(indexTime.toNanos()) + " ns)");
+    final Duration indexTime = Duration.ofNanos(System.nanoTime() - startNanos);
+    LOGGER.info(
+        "Spring GraphQL Support "
+            + (forceReload ? "forceful " : "")
+            + "indexing took "
+            + indexTime.toMillis()
+            + " ms ("
+            + ENGLISH_NUMBER_FORMAT.format(indexTime.toNanos())
+            + " ns)");
 
-        return this.cachedIdeIndex = indexBuilder.get().build();
+    return this.cachedIdeIndex = indexBuilder.get().build();
+  }
+
+  @Override
+  public boolean isApplicableProject(Project project) {
+    //noinspection PointlessNullCheck
+    return project != null && this.project.equals(project);
+  }
+
+  @Override
+  public boolean isSchemaMappingAnnotation(UAnnotation uAnnotation) {
+    // TODO Implement Spring annotation model
+    return QLIdeUtil.INSTANCE.isDefaultSchemaMappingAnnotation(uAnnotation);
+  }
+
+  @Override
+  public boolean isBatchMappingAnnotation(UAnnotation uAnnotation) {
+    return QLIdeUtil.INSTANCE.isBatchMappingAnnotation(uAnnotation);
+  }
+
+  @Override
+  public boolean isValidBatchMappingReturnType(UMethod uMethod) {
+    // Logic can be found over at:
+    //
+    // https://github.com/spring-projects/spring-graphql/blob/a15fd29fc0f95b675ba13c15f7d825e97511f527/spring-graphql/src/main/java/org/springframework/graphql/data/method/annotation/support/AnnotatedControllerConfigurer.java#L328-L352
+
+    final PsiType returnType = uMethod.getReturnType();
+    if (returnType == null) {
+      return false;
     }
 
-    @Override
-    public boolean isApplicableProject(Project project) {
-        //noinspection PointlessNullCheck
-        return project != null && this.project.equals(project);
+    final GlobalSearchScope searchScope = GlobalSearchScope.allScope(this.project);
+
+    final PsiType collectionType =
+        PsiType.getTypeByName(CommonClassNames.JAVA_UTIL_COLLECTION, this.project, searchScope);
+    if (collectionType.isAssignableFrom(returnType)) {
+      return true;
     }
 
-    @Override
-    public boolean isSchemaMappingAnnotation(UAnnotation uAnnotation) {
-        // TODO Implement Spring annotation model
-        return QLIdeUtil.INSTANCE.isDefaultSchemaMappingAnnotation(uAnnotation);
+    final PsiType mapType =
+        PsiType.getTypeByName(CommonClassNames.JAVA_UTIL_MAP, this.project, searchScope);
+    if (mapType.isAssignableFrom(returnType)) {
+      return true;
     }
 
-    @Override
-    public boolean isBatchMappingAnnotation(UAnnotation uAnnotation) {
-        return QLIdeUtil.INSTANCE.isBatchMappingAnnotation(uAnnotation);
+    // TODO This only handles Mono<V>, but it should check for Mono<Map<K, V>>.
+    final PsiType monoType =
+        PsiType.getTypeByName("reactor.core.publisher.Mono", this.project, searchScope);
+    if (monoType.isAssignableFrom(returnType)) {
+      return true;
     }
 
-    @Override
-    public boolean isValidBatchMappingReturnType(UMethod uMethod) {
-        // Logic can be found over at:
-        //  https://github.com/spring-projects/spring-graphql/blob/a15fd29fc0f95b675ba13c15f7d825e97511f527/spring-graphql/src/main/java/org/springframework/graphql/data/method/annotation/support/AnnotatedControllerConfigurer.java#L328-L352
-
-        final PsiType returnType = uMethod.getReturnType();
-        if (returnType == null) {
-            return false;
-        }
-
-        final GlobalSearchScope searchScope = GlobalSearchScope.allScope(this.project);
-
-        final PsiType collectionType = PsiType.getTypeByName(CommonClassNames.JAVA_UTIL_COLLECTION, this.project, searchScope);
-        if (collectionType.isAssignableFrom(returnType)) {
-            return true;
-        }
-
-        final PsiType mapType = PsiType.getTypeByName(CommonClassNames.JAVA_UTIL_MAP, this.project, searchScope);
-        if (mapType.isAssignableFrom(returnType)) {
-            return true;
-        }
-
-        // TODO This only handles Mono<V>, but it should check for Mono<Map<K, V>>.
-        final PsiType monoType = PsiType.getTypeByName("reactor.core.publisher.Mono", this.project, searchScope);
-        if (monoType.isAssignableFrom(returnType)) {
-            return true;
-        }
-
-        final PsiType fluxType = PsiType.getTypeByName("reactor.core.publisher.Flux", this.project, searchScope);
-        //noinspection RedundantIfStatement
-        if (fluxType.isAssignableFrom(returnType)) {
-            return true;
-        }
-
-        return false;
+    final PsiType fluxType =
+        PsiType.getTypeByName("reactor.core.publisher.Flux", this.project, searchScope);
+    //noinspection RedundantIfStatement
+    if (fluxType.isAssignableFrom(returnType)) {
+      return true;
     }
 
-    @Override
-    public boolean isMethodUsed(UMethod uMethod) {
-        return uMethod.getUAnnotations()
-                .stream()
-                .anyMatch(uAnnotation -> isSchemaMappingAnnotation(uAnnotation) ||
-                        isBatchMappingAnnotation(uAnnotation) ||
-                        SPRING_GRAPHQL_STANDARD_ANNOTATION_FQN.contains(uAnnotation.getQualifiedName()));
+    return false;
+  }
+
+  @Override
+  public boolean isMethodUsed(UMethod uMethod) {
+    return uMethod.getUAnnotations().stream()
+        .anyMatch(
+            uAnnotation ->
+                isSchemaMappingAnnotation(uAnnotation)
+                    || isBatchMappingAnnotation(uAnnotation)
+                    || SPRING_GRAPHQL_STANDARD_ANNOTATION_FQN.contains(
+                        uAnnotation.getQualifiedName()));
+  }
+
+  @Override
+  public boolean needsControllerAnnotation(@NotNull UClass uClass) {
+    Objects.requireNonNull(uClass, "uClass");
+
+    if (UExtKt.hasUAnnotation(uClass, SPRING_CONTROLLER_FQN)) {
+      return false;
     }
 
-    @Override
-    public boolean needsControllerAnnotation(@NotNull UClass uClass) {
-        Objects.requireNonNull(uClass, "uClass");
-
-        if (UExtKt.hasUAnnotation(uClass, SPRING_CONTROLLER_FQN)) {
-            return false;
-        }
-
-        //noinspection UnnecessaryLocalVariable
-        final boolean containsAnnotations = uClass.getUAnnotations()
-                .stream()
-                .anyMatch(uAnnotation -> isSchemaMappingAnnotation(uAnnotation)
+    //noinspection UnnecessaryLocalVariable
+    final boolean containsAnnotations =
+        uClass.getUAnnotations().stream()
+            .anyMatch(
+                uAnnotation ->
+                    isSchemaMappingAnnotation(uAnnotation)
                         || isBatchMappingAnnotation(uAnnotation));
 
-        return containsAnnotations;
+    return containsAnnotations;
+  }
+
+  @Override
+  public boolean isIntrospectionNode(Node<?> node) {
+    if (node instanceof ObjectTypeDefinition) {
+      final ObjectTypeDefinition typeDefinition = (ObjectTypeDefinition) node;
+      return typeDefinition.getName().startsWith("__");
+    }
+    if (node instanceof FieldDefinition) {
+      return getSchemaRegistry().getObjectDefinitions().stream()
+          .filter(typeDefinition -> typeDefinition.getName().startsWith("__"))
+          .anyMatch(typeDefinition -> typeDefinition.getFieldDefinitions().contains(node));
+    }
+    return false;
+  }
+
+  private boolean hasFieldWithNameAndType(
+      @NotNull ObjectTypeDefinition typeDefinition,
+      @NotNull String fieldName,
+      @NotNull String fieldType) {
+    Objects.requireNonNull(typeDefinition, "typeDefinition");
+    Objects.requireNonNull(fieldName, "fieldName");
+    Objects.requireNonNull(fieldType, "fieldType");
+    return typeDefinition.getFieldDefinitions().stream()
+        .anyMatch(
+            fieldDefinition ->
+                fieldDefinition != null
+                    && fieldDefinition.getType() != null
+                    && fieldName.equals(fieldDefinition.getName())
+                    && fieldType.equals(TypeUtil.simplePrint(fieldDefinition.getType())));
+  }
+
+  @Override
+  public boolean isApolloFederationSupportEnabled() {
+    return GraphQLLibraryTypes.FEDERATION.isEnabled(this.project);
+  }
+
+  @Nullable
+  @Override
+  public SchemaMappingSummary getSummaryForMethod(@NotNull UMethod uMethod) {
+    Objects.requireNonNull(uMethod, "uMethod");
+
+    QLIdeIndex index = getIndex();
+    List<QLMethodSchemaMappingIndexEntry> a = index.methodSchemaMappingByMethod(uMethod);
+
+    if (a.isEmpty()) {
+      return null;
     }
 
-    @Override
-    public boolean isIntrospectionNode(Node<?> node) {
-        if (node instanceof ObjectTypeDefinition) {
-            final ObjectTypeDefinition typeDefinition = (ObjectTypeDefinition) node;
-            return typeDefinition.getName().startsWith("__");
+    if (a.size() > 1) {
+      throw new IllegalStateException("Should not happen");
+    }
+
+    QLMethodSchemaMappingIndexEntry b = a.get(0);
+
+    String typeName = b.getParentType();
+    if (typeName == null || typeName.isEmpty()) {
+      UClass uClass = UastContextKt.getUastParentOfType(uMethod.getSourcePsi(), UClass.class);
+      if (uClass != null) {
+        Set<QLClassSchemaMappingIndexEntry> c = index.schemaMappingByClass(uClass);
+
+        if (c.size() > 1) {
+          throw new IllegalStateException(
+              "Should not happen - more then one Class -> @SchemaMapping mapping");
         }
-        if (node instanceof FieldDefinition) {
-            return getSchemaRegistry()
-                    .getObjectDefinitions()
-                    .stream()
-                    .filter(typeDefinition -> typeDefinition.getName().startsWith("__"))
-                    .anyMatch(typeDefinition -> typeDefinition.getFieldDefinitions().contains(node));
+        if (!c.isEmpty()) {
+          QLClassSchemaMappingIndexEntry only = c.iterator().next(); // TODO Convert index to list
+          typeName = only.getParentType();
         }
-        return false;
+        // No parent
+        // TODO Check if parentType || typeName is null?
+      } else {
+        // TODO No parent type - what should we do?
+      }
     }
 
-    private boolean hasFieldWithNameAndType(@NotNull ObjectTypeDefinition typeDefinition,
-                                            @NotNull String fieldName,
-                                            @NotNull String fieldType) {
-        Objects.requireNonNull(typeDefinition, "typeDefinition");
-        Objects.requireNonNull(fieldName, "fieldName");
-        Objects.requireNonNull(fieldType, "fieldType");
-        return typeDefinition.getFieldDefinitions()
-                .stream()
-                .anyMatch(fieldDefinition -> fieldDefinition != null
-                        && fieldDefinition.getType() != null
-                        && fieldName.equals(fieldDefinition.getName())
-                        && fieldType.equals(TypeUtil.simplePrint(fieldDefinition.getType())));
+    if (typeName == null || typeName.isEmpty()) {
+      typeName = ""; // TODO
     }
 
-    @Override
-    public boolean isApolloFederationSupportEnabled() {
-        return GraphQLLibraryTypes.FEDERATION.isEnabled(this.project);
+    String fieldName = b.getField();
+    if (fieldName == null || fieldName.isEmpty()) {
+      fieldName = uMethod.getName(); // todo null check?
     }
 
-    @Nullable
-    @Override
-    public SchemaMappingSummary getSummaryForMethod(@NotNull UMethod uMethod) {
-        Objects.requireNonNull(uMethod, "uMethod");
+    PsiElement schemaPsi = getSchemaRegistry().getSchemaPsiForObject(typeName, fieldName);
 
-        QLIdeIndex index = getIndex();
-        List<QLMethodSchemaMappingIndexEntry> a = index
-                .methodSchemaMappingByMethod(uMethod);
+    return new SchemaMappingSummary(
+        typeName,
+        fieldName,
+        b.getAnnotationPsi(),
+        schemaPsi,
+        b.getUAnnotation(),
+        QLIdeUtil.INSTANCE.reduceSchemaMappingAnnotationName(b.getUAnnotation()));
+  }
 
-        if (a.isEmpty()) {
-            return null;
+  @Override
+  public boolean isApolloFederationNode(Node<?> node) {
+    // See:
+    // https://github.com/jimkyndemeyer/js-graphql-intellij-plugin/blob/329fc22458a474ae807cd1d71d62d36b387392fc/resources/definitions/Federation.graphql
+    if (node instanceof FieldDefinition) {
+      FieldDefinition fieldDefinition = (FieldDefinition) node;
+      // sdl: String
+      if ("sdl".equals(fieldDefinition.getName())) {
+        ObjectTypeDefinition parentType = getSchemaRegistry().getParentType(fieldDefinition);
+        return (parentType != null && parentType.getName().equals("_Service"))
+            || "String".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
+      }
+      // _service: _Service!
+      if ("_service".equals(fieldDefinition.getName())) {
+        return "_Service".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
+      }
+      // _entities(representations: [_Any!]!): [_Entity]!
+      if ("_entities".equals(fieldDefinition.getName())) {
+        final List<InputValueDefinition> inputValueDefinitions =
+            fieldDefinition.getInputValueDefinitions();
+        if (inputValueDefinitions.size() != 1) {
+          return false;
         }
-
-        if (a.size() > 1) {
-            throw new IllegalStateException("Should not happen");
+        final InputValueDefinition firstDefinition = inputValueDefinitions.get(0);
+        if (firstDefinition == null
+            || !"representation".equals(firstDefinition.getName())
+            || !"[_Any!]!".equals(TypeUtil.simplePrint(firstDefinition.getType()))) {
+          return false;
         }
+        return "[_Entity]!".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
+      }
+    }
+    if (node instanceof ObjectTypeDefinition) {
+      ObjectTypeDefinition typeDefinition = (ObjectTypeDefinition) node;
+      if (typeDefinition.getName().equals("_Service")) {
+        return hasFieldWithNameAndType(typeDefinition, "sdl", "String");
+      }
+    }
+    return false;
+  }
 
-        QLMethodSchemaMappingIndexEntry b = a.get(0);
+  @Nullable
+  @Override
+  public String findApplicableParentTypeName(@NotNull UAnnotation uAnnotation) {
+    Objects.requireNonNull(uAnnotation, "uAnnotation");
 
-        String typeName = b.getParentType();
-        if (typeName == null || typeName.isEmpty()) {
-            UClass uClass = UastContextKt.getUastParentOfType(uMethod.getSourcePsi(), UClass.class);
-            if (uClass != null) {
-                Set<QLClassSchemaMappingIndexEntry> c = index.schemaMappingByClass(uClass);
+    return QLIdeUtil.INSTANCE.getSchemaMappingTypeName(uAnnotation);
+  }
 
-                if (c.size() > 1) {
-                    throw new IllegalStateException("Should not happen - more then one Class -> @SchemaMapping mapping");
-                }
-                if (!c.isEmpty()) {
-                    QLClassSchemaMappingIndexEntry only = c.iterator().next(); // TODO Convert index to list
-                    typeName = only.getParentType();
-                }
-                // No parent
-                // TODO Check if parentType || typeName is null?
-            } else {
-                // TODO No parent type - what should we do?
-            }
-        }
+  @Override
+  public List<UAnnotation> findNearestSchemaMappingAnnotations(UElement uElement) {
+    // I have no idea what I am doing in this method.
 
-        if (typeName == null || typeName.isEmpty()) {
-            typeName = ""; // TODO
-        }
-
-        String fieldName = b.getField();
-        if (fieldName == null || fieldName.isEmpty()) {
-            fieldName = uMethod.getName(); // todo null check?
-        }
-
-        PsiElement schemaPsi = getSchemaRegistry().getSchemaPsiForObject(typeName, fieldName);
-
-        return new SchemaMappingSummary(
-                typeName,
-                fieldName,
-                b.getAnnotationPsi(),
-                schemaPsi,
-                b.getUAnnotation(),
-                QLIdeUtil.INSTANCE.reduceSchemaMappingAnnotationName(b.getUAnnotation())
-        );
+    if (uElement instanceof UAnnotation) {
+      final UAnnotation uAnnotation = (UAnnotation) uElement;
+      if (isSchemaMappingAnnotation(uAnnotation)) {
+        return Collections.singletonList(uAnnotation);
+      } else {
+        return Collections.emptyList();
+      }
     }
 
-    @Override
-    public boolean isApolloFederationNode(Node<?> node) {
-        // See: https://github.com/jimkyndemeyer/js-graphql-intellij-plugin/blob/329fc22458a474ae807cd1d71d62d36b387392fc/resources/definitions/Federation.graphql
-        if (node instanceof FieldDefinition) {
-            FieldDefinition fieldDefinition = (FieldDefinition) node;
-            // sdl: String
-            if ("sdl".equals(fieldDefinition.getName())) {
-                ObjectTypeDefinition parentType = getSchemaRegistry().getParentType(fieldDefinition);
-                return (parentType != null && parentType.getName().equals("_Service")) ||
-                        "String".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
-            }
-            // _service: _Service!
-            if ("_service".equals(fieldDefinition.getName())) {
-                return "_Service".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
-            }
-            // _entities(representations: [_Any!]!): [_Entity]!
-            if ("_entities".equals(fieldDefinition.getName())) {
-                final List<InputValueDefinition> inputValueDefinitions = fieldDefinition.getInputValueDefinitions();
-                if (inputValueDefinitions.size() != 1) {
-                    return false;
-                }
-                final InputValueDefinition firstDefinition = inputValueDefinitions.get(0);
-                if (firstDefinition == null || !"representation".equals(firstDefinition.getName()) || !"[_Any!]!".equals(TypeUtil.simplePrint(firstDefinition.getType()))) {
-                    return false;
-                }
-                return "[_Entity]!".equals(TypeUtil.simplePrint(fieldDefinition.getType()));
-            }
-        }
-        if (node instanceof ObjectTypeDefinition) {
-            ObjectTypeDefinition typeDefinition = (ObjectTypeDefinition) node;
-            if (typeDefinition.getName().equals("_Service")) {
-                return hasFieldWithNameAndType(typeDefinition, "sdl", "String");
-            }
-        }
-        return false;
+    if (uElement instanceof UMethod) {
+      final UMethod uMethod = (UMethod) uElement;
+      return uMethod.getUAnnotations().stream()
+          .filter(Objects::nonNull)
+          .filter(this::isSchemaMappingAnnotation)
+          .collect(Collectors.toUnmodifiableList());
     }
 
-    @Nullable
-    @Override
-    public String findApplicableParentTypeName(@NotNull UAnnotation uAnnotation) {
-        Objects.requireNonNull(uAnnotation, "uAnnotation");
-
-        return QLIdeUtil.INSTANCE.getSchemaMappingTypeName(uAnnotation);
+    if (uElement instanceof UClass) {
+      final UClass uClass = (UClass) uElement;
+      return uClass.getUAnnotations().stream()
+          .filter(Objects::nonNull)
+          .filter(this::isSchemaMappingAnnotation)
+          .collect(Collectors.toUnmodifiableList());
     }
 
-    @Override
-    public List<UAnnotation> findNearestSchemaMappingAnnotations(UElement uElement) {
-        // I have no idea what I am doing in this method.
+    if (uElement instanceof ULiteralExpression) {
+      final ULiteralExpression uLiteralExpression = (ULiteralExpression) uElement;
+      final UAnnotation uAnnotation =
+          UastContextKt.getUastParentOfType(uLiteralExpression.getSourcePsi(), UAnnotation.class);
 
-        if (uElement instanceof UAnnotation) {
-            final UAnnotation uAnnotation = (UAnnotation) uElement;
-            if (isSchemaMappingAnnotation(uAnnotation)) {
-                return Collections.singletonList(uAnnotation);
-            } else {
-                return Collections.emptyList();
-            }
-        }
-
-        if (uElement instanceof UMethod) {
-            final UMethod uMethod = (UMethod) uElement;
-            return uMethod.getUAnnotations()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .filter(this::isSchemaMappingAnnotation)
-                    .collect(Collectors.toUnmodifiableList());
-        }
-
-        if (uElement instanceof UClass) {
-            final UClass uClass = (UClass) uElement;
-            return uClass.getUAnnotations()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .filter(this::isSchemaMappingAnnotation)
-                    .collect(Collectors.toUnmodifiableList());
-        }
-
-        if (uElement instanceof ULiteralExpression) {
-            final ULiteralExpression uLiteralExpression = (ULiteralExpression) uElement;
-            final UAnnotation uAnnotation = UastContextKt
-                    .getUastParentOfType(uLiteralExpression.getSourcePsi(), UAnnotation.class);
-
-            if (uAnnotation != null && isSchemaMappingAnnotation(uAnnotation)) {
-                return Collections.singletonList(uAnnotation);
-            } else {
-                return Collections.emptyList();
-            }
-        }
-
-        return null;
+      if (uAnnotation != null && isSchemaMappingAnnotation(uAnnotation)) {
+        return Collections.singletonList(uAnnotation);
+      } else {
+        return Collections.emptyList();
+      }
     }
 
-    @NotNull
-    @Override
-    public QLSchemaRegistry getSchemaRegistry() {
-        return new QLSchemaRegistry(getTypeDefinitionRegistry(), getGraphQLSchemaInfo());
-//        return Objects.requireNonNullElseGet(cachedSchemaRegistry,
-//                () -> cachedSchemaRegistry = new QLSchemaRegistry(getTypeDefinitionRegistry()));
-    }
+    return null;
+  }
 
-    @NotNull
-    private TypeDefinitionRegistry getTypeDefinitionRegistry() {
-        final PsiElement rootPsi = getProjectRootPsi();
-        return GraphQLSchemaProvider.getInstance(project)
-                .getRegistryInfo(rootPsi)
-                .getTypeDefinitionRegistry();
-    }
+  @NotNull
+  @Override
+  public QLSchemaRegistry getSchemaRegistry() {
+    return new QLSchemaRegistry(getTypeDefinitionRegistry(), getGraphQLSchemaInfo());
+    //        return Objects.requireNonNullElseGet(cachedSchemaRegistry,
+    //                () -> cachedSchemaRegistry = new
+    // QLSchemaRegistry(getTypeDefinitionRegistry()));
+  }
 
-    @NotNull
-    private GraphQLSchemaInfo getGraphQLSchemaInfo() {
-        final PsiElement rootPsi = getProjectRootPsi();
-        return GraphQLSchemaProvider.getInstance(project)
-                .getSchemaInfo(rootPsi);
-    }
+  @NotNull
+  private TypeDefinitionRegistry getTypeDefinitionRegistry() {
+    final PsiElement rootPsi = getProjectRootPsi();
+    return GraphQLSchemaProvider.getInstance(project)
+        .getRegistryInfo(rootPsi)
+        .getTypeDefinitionRegistry();
+  }
 
-    @NotNull
-    private PsiElement getProjectRootPsi() {
-        final VirtualFile projectFile = Objects.requireNonNull(project.getProjectFile(),
-                "projectFile is null for '" + project.getName() + "'");
-        return Objects.requireNonNull(PsiManager.getInstance(project).findFile(projectFile),
-                "rootPsi is null for project '" + project.getName() + "' at '" + projectFile + "'");
-    }
+  @NotNull
+  private GraphQLSchemaInfo getGraphQLSchemaInfo() {
+    final PsiElement rootPsi = getProjectRootPsi();
+    return GraphQLSchemaProvider.getInstance(project).getSchemaInfo(rootPsi);
+  }
 
-    private boolean updateAndCheckModified() {
-        // TODO Think about tracking changes in Groovy and Scala files.
-        //  Requirement for this are that UAST is supported, and the languages are actually being used with Spring GraphQL.
-        //  A combination of Groovy, Spock, and Spring GraphQL would probably be a good use case.
+  @NotNull
+  private PsiElement getProjectRootPsi() {
+    final VirtualFile projectFile =
+        Objects.requireNonNull(
+            project.getProjectFile(), "projectFile is null for '" + project.getName() + "'");
+    return Objects.requireNonNull(
+        PsiManager.getInstance(project).findFile(projectFile),
+        "rootPsi is null for project '" + project.getName() + "' at '" + projectFile + "'");
+  }
 
-        long javaModificationCount = PsiModificationTracker.SERVICE
-                .getInstance(this.project)
-                .forLanguage(JavaLanguage.INSTANCE)
-                .getModificationCount();
+  private boolean updateAndCheckModified() {
+    // TODO Think about tracking changes in Groovy and Scala files.
+    //  Requirement for this are that UAST is supported, and the languages are actually being used
+    // with Spring GraphQL.
+    //  A combination of Groovy, Spock, and Spring GraphQL would probably be a good use case.
 
-        boolean javaModified = this.javaModificationCount.getAndSet(javaModificationCount) != javaModificationCount;
+    long javaModificationCount =
+        PsiModificationTracker.SERVICE
+            .getInstance(this.project)
+            .forLanguage(JavaLanguage.INSTANCE)
+            .getModificationCount();
 
-        long kotlinModificationCount = PsiModificationTracker.SERVICE
-                .getInstance(this.project)
-                .forLanguage(JavaLanguage.INSTANCE)
-                .getModificationCount();
+    boolean javaModified =
+        this.javaModificationCount.getAndSet(javaModificationCount) != javaModificationCount;
 
-        boolean kotlinModified = this.kotlinModificationCount.getAndSet(kotlinModificationCount) != kotlinModificationCount;
+    long kotlinModificationCount =
+        PsiModificationTracker.SERVICE
+            .getInstance(this.project)
+            .forLanguage(JavaLanguage.INSTANCE)
+            .getModificationCount();
 
-        long graphQLModificationCount = GraphQLSchemaChangeTracker
-                .getInstance(this.project)
-                .getSchemaModificationTracker()
-                .getModificationCount();
+    boolean kotlinModified =
+        this.kotlinModificationCount.getAndSet(kotlinModificationCount) != kotlinModificationCount;
 
-        boolean graphQLModified = this.graphQLModificationCount.getAndSet(graphQLModificationCount) != graphQLModificationCount;
+    long graphQLModificationCount =
+        GraphQLSchemaChangeTracker.getInstance(this.project)
+            .getSchemaModificationTracker()
+            .getModificationCount();
 
-        return javaModified || kotlinModified || graphQLModified;
-    }
+    boolean graphQLModified =
+        this.graphQLModificationCount.getAndSet(graphQLModificationCount)
+            != graphQLModificationCount;
 
-    @Override
-    public void dispose() {
-        // Do nothing.
-    }
+    return javaModified || kotlinModified || graphQLModified;
+  }
 
+  @Override
+  public void dispose() {
+    // Do nothing.
+  }
 }

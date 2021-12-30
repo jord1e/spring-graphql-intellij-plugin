@@ -15,51 +15,51 @@ import java.util.List;
 
 public interface QLIdeService {
 
-    @NotNull
-    default QLIdeIndex getIndex() {
-        return getIndex(false);
+  @NotNull
+  default QLIdeIndex getIndex() {
+    return getIndex(false);
+  }
+
+  @NotNull
+  QLIdeIndex getIndex(boolean forceReload);
+
+  boolean isApplicableProject(Project project);
+
+  boolean isSchemaMappingAnnotation(UAnnotation uAnnotation);
+
+  boolean isBatchMappingAnnotation(UAnnotation uAnnotation);
+
+  boolean isValidBatchMappingReturnType(UMethod uMethod);
+
+  boolean isMethodUsed(UMethod uMethod);
+
+  boolean needsControllerAnnotation(@NotNull UClass uClass);
+
+  boolean isIntrospectionNode(Node<?> node);
+
+  boolean isApolloFederationSupportEnabled();
+
+  @Nullable
+  SchemaMappingSummary getSummaryForMethod(@NotNull UMethod uMethod);
+
+  default boolean isApolloFederationNode(Node<?> node, boolean checkSupport) {
+    if (checkSupport && !isApolloFederationSupportEnabled()) {
+      return false;
     }
+    return isApolloFederationNode(node);
+  }
 
-    @NotNull
-    QLIdeIndex getIndex(boolean forceReload);
+  boolean isApolloFederationNode(Node<?> node);
 
-    boolean isApplicableProject(Project project);
+  @Nullable
+  String findApplicableParentTypeName(@NotNull UAnnotation uAnnotation);
 
-    boolean isSchemaMappingAnnotation(UAnnotation uAnnotation);
+  List<UAnnotation> findNearestSchemaMappingAnnotations(UElement uElement);
 
-    boolean isBatchMappingAnnotation(UAnnotation uAnnotation);
+  @NotNull
+  QLSchemaRegistry getSchemaRegistry();
 
-    boolean isValidBatchMappingReturnType(UMethod uMethod);
-
-    boolean isMethodUsed(UMethod uMethod);
-
-    boolean needsControllerAnnotation(@NotNull UClass uClass);
-
-    boolean isIntrospectionNode(Node<?> node);
-
-    boolean isApolloFederationSupportEnabled();
-
-    @Nullable
-    SchemaMappingSummary getSummaryForMethod(@NotNull UMethod uMethod);
-
-    default boolean isApolloFederationNode(Node<?> node, boolean checkSupport) {
-        if (checkSupport && !isApolloFederationSupportEnabled()) {
-            return false;
-        }
-        return isApolloFederationNode(node);
-    }
-
-    boolean isApolloFederationNode(Node<?> node);
-
-    @Nullable
-    String findApplicableParentTypeName(@NotNull UAnnotation uAnnotation);
-
-    List<UAnnotation> findNearestSchemaMappingAnnotations(UElement uElement);
-
-    @NotNull
-    QLSchemaRegistry getSchemaRegistry();
-
-//    @NotNull
-//    Project getApplicableProject();
+  //    @NotNull
+  //    Project getApplicableProject();
 
 }

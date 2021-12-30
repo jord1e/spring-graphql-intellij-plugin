@@ -18,112 +18,112 @@ import java.util.stream.Collectors;
 
 public class QLSchemaRegistry {
 
-    @NotNull
-    private final TypeDefinitionRegistry typeDefinitionRegistry;
+  @NotNull private final TypeDefinitionRegistry typeDefinitionRegistry;
 
-    @NotNull
-    private final GraphQLSchemaInfo graphQLSchemaInfo;
+  @NotNull private final GraphQLSchemaInfo graphQLSchemaInfo;
 
-    public QLSchemaRegistry(TypeDefinitionRegistry typeDefinitionRegistry, GraphQLSchemaInfo graphQLSchemaInfo) {
-        this.typeDefinitionRegistry = Objects.requireNonNull(typeDefinitionRegistry, "typeDefinitionRegistry");
-        this.graphQLSchemaInfo = Objects.requireNonNull(graphQLSchemaInfo, "graphQLSchemaInfo");
-    }
+  public QLSchemaRegistry(
+      TypeDefinitionRegistry typeDefinitionRegistry, GraphQLSchemaInfo graphQLSchemaInfo) {
+    this.typeDefinitionRegistry =
+        Objects.requireNonNull(typeDefinitionRegistry, "typeDefinitionRegistry");
+    this.graphQLSchemaInfo = Objects.requireNonNull(graphQLSchemaInfo, "graphQLSchemaInfo");
+  }
 
-    public boolean hasObjectWithExactTypeName(@NotNull String typeName) {
-        Objects.requireNonNull(typeName, "typeName");
+  public boolean hasObjectWithExactTypeName(@NotNull String typeName) {
+    Objects.requireNonNull(typeName, "typeName");
 
-        return typeDefinitionRegistry
-                .getType(typeName, ObjectTypeDefinition.class)
-                .isPresent();
-    }
+    return typeDefinitionRegistry.getType(typeName, ObjectTypeDefinition.class).isPresent();
+  }
 
-    @Nullable
-    public PsiElement getSchemaPsiForObject(@NotNull String typeName, @NotNull String field) {
-        return Optional.ofNullable(getFieldDefinition(typeName, field))
-                .map(AbstractNode::getSourceLocation)
-                .map(SourceLocation::getElement)
-                .orElse(null);
-    }
+  @Nullable
+  public PsiElement getSchemaPsiForObject(@NotNull String typeName, @NotNull String field) {
+    return Optional.ofNullable(getFieldDefinition(typeName, field))
+        .map(AbstractNode::getSourceLocation)
+        .map(SourceLocation::getElement)
+        .orElse(null);
+  }
 
-    @Nullable
-    public FieldDefinition getFieldDefinition(@NotNull String typeName, @NotNull String field) {
-        Objects.requireNonNull(typeName, "typeName");
-        Objects.requireNonNull(field, "field");
+  @Nullable
+  public FieldDefinition getFieldDefinition(@NotNull String typeName, @NotNull String field) {
+    Objects.requireNonNull(typeName, "typeName");
+    Objects.requireNonNull(field, "field");
 
-        return typeDefinitionRegistry
-                .getType(typeName, ObjectTypeDefinition.class)
-                .flatMap(type -> type.getFieldDefinitions()
-                        .stream()
-                        .filter(fieldDefinition -> field.equals(fieldDefinition.getName()))
-                        .findFirst())
-                .orElse(null);
-    }
+    return typeDefinitionRegistry
+        .getType(typeName, ObjectTypeDefinition.class)
+        .flatMap(
+            type ->
+                type.getFieldDefinitions().stream()
+                    .filter(fieldDefinition -> field.equals(fieldDefinition.getName()))
+                    .findFirst())
+        .orElse(null);
+  }
 
-    @NotNull
-    public List<PsiElement> getAllSchemaPsiForObject(@NotNull String typeName, @NotNull String field) {
-        Objects.requireNonNull(typeName, "typeName");
-        Objects.requireNonNull(field, "field");
+  @NotNull
+  public List<PsiElement> getAllSchemaPsiForObject(
+      @NotNull String typeName, @NotNull String field) {
+    Objects.requireNonNull(typeName, "typeName");
+    Objects.requireNonNull(field, "field");
 
-        return typeDefinitionRegistry
-                .getType(typeName, ObjectTypeDefinition.class)
-                .map(type -> type.getFieldDefinitions()
-                        .stream()
-                        .filter(fieldDefinition -> field.equals(fieldDefinition.getName()))
-                        .map(AbstractNode::getSourceLocation)
-                        .map(SourceLocation::getElement)
-                        .filter(Objects::nonNull)
-//                        .flatMap(List::stream)
-                        .collect(Collectors.toUnmodifiableList()))
-                .orElse(Collections.emptyList());
-    }
+    return typeDefinitionRegistry
+        .getType(typeName, ObjectTypeDefinition.class)
+        .map(
+            type ->
+                type.getFieldDefinitions().stream()
+                    .filter(fieldDefinition -> field.equals(fieldDefinition.getName()))
+                    .map(AbstractNode::getSourceLocation)
+                    .map(SourceLocation::getElement)
+                    .filter(Objects::nonNull)
+                    //                        .flatMap(List::stream)
+                    .collect(Collectors.toUnmodifiableList()))
+        .orElse(Collections.emptyList());
+  }
 
-    @Nullable
-    public PsiElement getSchemaPsiForObject(@NotNull String typeName) {
-        Objects.requireNonNull(typeName, "typeName");
+  @Nullable
+  public PsiElement getSchemaPsiForObject(@NotNull String typeName) {
+    Objects.requireNonNull(typeName, "typeName");
 
-        return typeDefinitionRegistry
-                .getType(typeName, ObjectTypeDefinition.class)
-                .map(AbstractNode::getElement)
-                .orElse(null);
-    }
+    return typeDefinitionRegistry
+        .getType(typeName, ObjectTypeDefinition.class)
+        .map(AbstractNode::getElement)
+        .orElse(null);
+  }
 
-    @Nullable
-    public ObjectTypeDefinition getObjectTypeDefinition(@NotNull String typeName) {
-        Objects.requireNonNull(typeName, "typeName");
+  @Nullable
+  public ObjectTypeDefinition getObjectTypeDefinition(@NotNull String typeName) {
+    Objects.requireNonNull(typeName, "typeName");
 
-        return typeDefinitionRegistry
-                .getType(typeName, ObjectTypeDefinition.class)
-                .orElse(null);
-    }
+    return typeDefinitionRegistry.getType(typeName, ObjectTypeDefinition.class).orElse(null);
+  }
 
-    @NotNull
-    public List<ObjectTypeDefinition> getObjectDefinitions() {
-        return Collections.unmodifiableList(typeDefinitionRegistry.getTypes(ObjectTypeDefinition.class));
-    }
+  @NotNull
+  public List<ObjectTypeDefinition> getObjectDefinitions() {
+    return Collections.unmodifiableList(
+        typeDefinitionRegistry.getTypes(ObjectTypeDefinition.class));
+  }
 
-    @NotNull
-    public List<FieldDefinition> getFieldDefinitions() {
-        return getObjectDefinitions()
-                .stream()
-                .map(ObjectTypeDefinition::getFieldDefinitions)
-                .flatMap(List::stream)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toUnmodifiableList());
-    }
+  @NotNull
+  public List<FieldDefinition> getFieldDefinitions() {
+    return getObjectDefinitions().stream()
+        .map(ObjectTypeDefinition::getFieldDefinitions)
+        .flatMap(List::stream)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toUnmodifiableList());
+  }
 
-    @Nullable
-    public ObjectTypeDefinition getParentType(@NotNull FieldDefinition fieldDefinition) {
-        Objects.requireNonNull(fieldDefinition, "fieldDefinition");
+  @Nullable
+  public ObjectTypeDefinition getParentType(@NotNull FieldDefinition fieldDefinition) {
+    Objects.requireNonNull(fieldDefinition, "fieldDefinition");
 
-        return getObjectDefinitions()
-                .stream()
-                .filter(objectTypeDefinition -> objectTypeDefinition.getFieldDefinitions().contains(fieldDefinition))
-                .findFirst()
-                .orElse(null);
-    }
+    return getObjectDefinitions().stream()
+        .filter(
+            objectTypeDefinition ->
+                objectTypeDefinition.getFieldDefinitions().contains(fieldDefinition))
+        .findFirst()
+        .orElse(null);
+  }
 
-    @NotNull
-    public GraphQLSchemaInfo getGraphQLSchemaInfo() {
-        return graphQLSchemaInfo;
-    }
+  @NotNull
+  public GraphQLSchemaInfo getGraphQLSchemaInfo() {
+    return graphQLSchemaInfo;
+  }
 }

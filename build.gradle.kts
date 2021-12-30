@@ -43,6 +43,7 @@ spotless {
         googleJavaFormat("1.13.0")
     }
     format("prettier") {
+        prettier(mapOf("prettier" to "2.5.1", "@prettier/plugin-xml" to "1.2.0"))
         target(
             "/*.md",
             "/*.yml",
@@ -50,7 +51,6 @@ spotless {
             "/src/main/resources/META-INF/plugin.xml",
             "/src/main/resources/inspectionDescriptions/*.html"
         )
-        prettier("2.5.1")
     }
 }
 

@@ -29,46 +29,86 @@
     <resource-bundle>messages.SpringGraphQLBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <projectService serviceInterface="nl.jrdie.idea.springql.svc.QLIdeService"
-                        serviceImplementation="nl.jrdie.idea.springql.svc.QLIdeServiceImpl"/>
+        <projectService
+      serviceInterface="nl.jrdie.idea.springql.svc.QLIdeService"
+      serviceImplementation="nl.jrdie.idea.springql.svc.QLIdeServiceImpl"
+    />
 
-        <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="nl.jrdie.idea.springql.ide.gutter.marker.SchemaMappingToSchemaLineMarkerProvider"/>
-        <codeInsight.lineMarkerProvider language="GraphQL"
-                                        implementationClass="nl.jrdie.idea.springql.ide.gutter.marker.SchemaToSchemaMappingLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider
+      language="UAST"
+      implementationClass="nl.jrdie.idea.springql.ide.gutter.marker.SchemaMappingToSchemaLineMarkerProvider"
+    />
+        <codeInsight.lineMarkerProvider
+      language="GraphQL"
+      implementationClass="nl.jrdie.idea.springql.ide.gutter.marker.SchemaToSchemaMappingLineMarkerProvider"
+    />
 
-        <localInspection language="UAST" enabledByDefault="true" groupKey="nl.jrdie.idea.springql.ui.grouping"
-                         key="nl.jrdie.idea.springql.inspection.missing.controller"
-                         implementationClass="nl.jrdie.idea.springql.ide.inspection.QLMissingControllerAnnotationInspection"/>
+        <localInspection
+      language="UAST"
+      enabledByDefault="true"
+      groupKey="nl.jrdie.idea.springql.ui.grouping"
+      key="nl.jrdie.idea.springql.inspection.missing.controller"
+      implementationClass="nl.jrdie.idea.springql.ide.inspection.QLMissingControllerAnnotationInspection"
+    />
 
-        <implicitUsageProvider implementation="nl.jrdie.idea.springql.ide.codeInsight.QLImplicitUsageProvider"/>
+        <implicitUsageProvider
+      implementation="nl.jrdie.idea.springql.ide.codeInsight.QLImplicitUsageProvider"
+    />
 
-        <psi.referenceContributor language="JAVA"
-                                  implementation="nl.jrdie.idea.springql.ide.completion.contributor.SchemaMappingContributor"/>
+        <psi.referenceContributor
+      language="JAVA"
+      implementation="nl.jrdie.idea.springql.ide.completion.contributor.SchemaMappingContributor"
+    />
 
-        <annotator language="UAST"
-                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingDoesNotExistAnnotator"/>
-        <annotator language="UAST"
-                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.DuplicateSchemaMappingAnnotator"/>
-        <annotator language="UAST"
-                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.BatchMappingAndSchemaMappingErrorAnnotator"/>
-        <annotator language="UAST"
-                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.BatchMappingInvalidReturnTypeErrorAnnotator"/>
-        <annotator language="UAST"
-                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingFieldNameOnClassAnnotator"/>
-        <annotator language="UAST"
-                   implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingNoTypeOnClassAnnotator"/>
+        <annotator
+      language="UAST"
+      implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingDoesNotExistAnnotator"
+    />
+        <annotator
+      language="UAST"
+      implementationClass="nl.jrdie.idea.springql.ide.highlighting.DuplicateSchemaMappingAnnotator"
+    />
+        <annotator
+      language="UAST"
+      implementationClass="nl.jrdie.idea.springql.ide.highlighting.BatchMappingAndSchemaMappingErrorAnnotator"
+    />
+        <annotator
+      language="UAST"
+      implementationClass="nl.jrdie.idea.springql.ide.highlighting.BatchMappingInvalidReturnTypeErrorAnnotator"
+    />
+        <annotator
+      language="UAST"
+      implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingFieldNameOnClassAnnotator"
+    />
+        <annotator
+      language="UAST"
+      implementationClass="nl.jrdie.idea.springql.ide.highlighting.SchemaMappingNoTypeOnClassAnnotator"
+    />
 
-        <treeStructureProvider implementation="nl.jrdie.idea.springql.ide.tree.QLProjectTreeStructureProvider"/>
+        <treeStructureProvider
+      implementation="nl.jrdie.idea.springql.ide.tree.QLProjectTreeStructureProvider"
+    />
 
         <!-- https://plugins.jetbrains.com/intellij-platform-explorer?extensions=com.intellij.dependencySupport -->
         <!-- https://github.com/JetBrains/intellij-community/blob/58eee3d5b159492dc4c16f02735a28629231937b/platform/platform-impl/src/com/intellij/ide/plugins/DependencyCollector.kt -->
-        <dependencySupport kind="java" coordinate="org.springframework.experimental:graphql-spring-boot-starter"
-                           displayName="Spring Boot GraphQL Starter (Experimental)"/>
-        <dependencySupport kind="java" coordinate="org.springframework:graphql-spring-boot-starter"
-                           displayName="Spring Boot GraphQL Starter"/>
-        <dependencySupport kind="java" coordinate="org.springframework.graphql:spring-graphql"
-                           displayName="Spring GraphQL"/>
-        <dependencySupport kind="java" coordinate="org.springframework.graphql:spring-graphql-test"/>
+        <dependencySupport
+      kind="java"
+      coordinate="org.springframework.experimental:graphql-spring-boot-starter"
+      displayName="Spring Boot GraphQL Starter (Experimental)"
+    />
+        <dependencySupport
+      kind="java"
+      coordinate="org.springframework:graphql-spring-boot-starter"
+      displayName="Spring Boot GraphQL Starter"
+    />
+        <dependencySupport
+      kind="java"
+      coordinate="org.springframework.graphql:spring-graphql"
+      displayName="Spring GraphQL"
+    />
+        <dependencySupport
+      kind="java"
+      coordinate="org.springframework.graphql:spring-graphql-test"
+    />
     </extensions>
 </idea-plugin>

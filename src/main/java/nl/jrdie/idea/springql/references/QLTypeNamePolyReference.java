@@ -21,104 +21,99 @@ import java.util.Objects;
 
 public class QLTypeNamePolyReference extends PsiPolyVariantReferenceBase<PsiElement> {
 
-    public QLTypeNamePolyReference(@NotNull PsiElement psiElement) {
-        super(Objects.requireNonNull(psiElement, "psiElement"));
+  public QLTypeNamePolyReference(@NotNull PsiElement psiElement) {
+    super(Objects.requireNonNull(psiElement, "psiElement"));
+  }
+
+  @NotNull
+  @Override
+  public ResolveResult[] multiResolve(boolean incompleteCode) {
+    final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
+    if (!svc.isApplicableProject(myElement.getProject())) {
+      return ResolveResult.EMPTY_ARRAY;
     }
 
-    @NotNull
-    @Override
-    public ResolveResult[] multiResolve(boolean incompleteCode) {
-        final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
-        if (!svc.isApplicableProject(myElement.getProject())) {
-            return ResolveResult.EMPTY_ARRAY;
-        }
-
-        final UAnnotation parentAnnotation = UastContextKt.getUastParentOfType(myElement, UAnnotation.class);
-        if (parentAnnotation == null) {
-            return ResolveResult.EMPTY_ARRAY;
-        }
-
-        return svc.getIndex()
-                .schemaMappingByAnnotation(parentAnnotation)
-                .stream()
-                .map(SchemaMappingIndexEntry::getParentType)
-                .filter(Objects::nonNull)
-                .map(svc.getSchemaRegistry()::getObjectTypeDefinition)
-                .filter(Objects::nonNull)
-                .map(ObjectTypeDefinition::getElement)
-                .filter(Objects::nonNull)
-                .map(PsiElementResolveResult::new)
-                .toArray(ResolveResult[]::new);
+    final UAnnotation parentAnnotation =
+        UastContextKt.getUastParentOfType(myElement, UAnnotation.class);
+    if (parentAnnotation == null) {
+      return ResolveResult.EMPTY_ARRAY;
     }
 
-    @NotNull
-    @Override
-    public Object[] getVariants() {
-        final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
-        if (!svc.isApplicableProject(myElement.getProject())) {
-            return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
-        }
+    return svc.getIndex().schemaMappingByAnnotation(parentAnnotation).stream()
+        .map(SchemaMappingIndexEntry::getParentType)
+        .filter(Objects::nonNull)
+        .map(svc.getSchemaRegistry()::getObjectTypeDefinition)
+        .filter(Objects::nonNull)
+        .map(ObjectTypeDefinition::getElement)
+        .filter(Objects::nonNull)
+        .map(PsiElementResolveResult::new)
+        .toArray(ResolveResult[]::new);
+  }
 
-        return svc
-                .getSchemaRegistry()
-                .getObjectDefinitions()
-                .stream()
-                .map(typeDefinition -> buildElement(svc, typeDefinition))
-                .toArray(LookupElement[]::new);
+  @NotNull
+  @Override
+  public Object[] getVariants() {
+    final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
+    if (!svc.isApplicableProject(myElement.getProject())) {
+      return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
     }
 
-    @NotNull
-    private LookupElement buildElement(@NotNull QLIdeService svc,
-                                       @NotNull ObjectTypeDefinition typeDefinition) {
-        Objects.requireNonNull(svc, "svc");
-        Objects.requireNonNull(typeDefinition, "typeDefinition");
+    return svc.getSchemaRegistry().getObjectDefinitions().stream()
+        .map(typeDefinition -> buildElement(svc, typeDefinition))
+        .toArray(LookupElement[]::new);
+  }
 
-        final Icon icon = getIcon(svc, typeDefinition);
+  @NotNull
+  private LookupElement buildElement(
+      @NotNull QLIdeService svc, @NotNull ObjectTypeDefinition typeDefinition) {
+    Objects.requireNonNull(svc, "svc");
+    Objects.requireNonNull(typeDefinition, "typeDefinition");
 
-        final LookupElement intermediateLookupElement = LookupElementBuilder
-                .create(typeDefinition.getName())
-                .withPsiElement(typeDefinition.getElement())
-                .withIcon(icon);
+    final Icon icon = getIcon(svc, typeDefinition);
 
-        return PrioritizedLookupElement
-                .withPriority(intermediateLookupElement, decidePriority(typeDefinition));
+    final LookupElement intermediateLookupElement =
+        LookupElementBuilder.create(typeDefinition.getName())
+            .withPsiElement(typeDefinition.getElement())
+            .withIcon(icon);
+
+    return PrioritizedLookupElement.withPriority(
+        intermediateLookupElement, decidePriority(typeDefinition));
+  }
+
+  @NotNull
+  private Icon getIcon(@NotNull QLIdeService svc, @NotNull ObjectTypeDefinition typeDefinition) {
+    Objects.requireNonNull(svc, "svc");
+    Objects.requireNonNull(typeDefinition, "typeDefinition");
+
+    if (svc.isApolloFederationNode(typeDefinition)) {
+      return QLIcons.INSTANCE.getApollo();
     }
 
-    @NotNull
-    private Icon getIcon(@NotNull QLIdeService svc,
-                         @NotNull ObjectTypeDefinition typeDefinition) {
-        Objects.requireNonNull(svc, "svc");
-        Objects.requireNonNull(typeDefinition, "typeDefinition");
-
-        if (svc.isApolloFederationNode(typeDefinition)) {
-            return QLIcons.INSTANCE.getApollo();
-        }
-
-        if (svc.isIntrospectionNode(typeDefinition)) {
-            return QLIcons.INSTANCE.getIntrospectionFieldType();
-        }
-
-        switch (typeDefinition.getName()) {
-            case "Query":
-                return QLIcons.INSTANCE.getQuery();
-            case "Mutation":
-                return QLIcons.INSTANCE.getMutation();
-            case "Subscription":
-                return QLIcons.INSTANCE.getSubscription();
-            default:
-                return QLIcons.INSTANCE.getType();
-        }
+    if (svc.isIntrospectionNode(typeDefinition)) {
+      return QLIcons.INSTANCE.getIntrospectionFieldType();
     }
 
-    private double decidePriority(@NotNull ObjectTypeDefinition typeDefinition) {
-        Objects.requireNonNull(typeDefinition, "typeDefinition");
-
-        if (typeDefinition.getName().startsWith("__")) {
-            return 0.5;
-        }
-        if (typeDefinition.getName().startsWith("_")) {
-            return 0.0;
-        }
-        return 1.0;
+    switch (typeDefinition.getName()) {
+      case "Query":
+        return QLIcons.INSTANCE.getQuery();
+      case "Mutation":
+        return QLIcons.INSTANCE.getMutation();
+      case "Subscription":
+        return QLIcons.INSTANCE.getSubscription();
+      default:
+        return QLIcons.INSTANCE.getType();
     }
+  }
+
+  private double decidePriority(@NotNull ObjectTypeDefinition typeDefinition) {
+    Objects.requireNonNull(typeDefinition, "typeDefinition");
+
+    if (typeDefinition.getName().startsWith("__")) {
+      return 0.5;
+    }
+    if (typeDefinition.getName().startsWith("_")) {
+      return 0.0;
+    }
+    return 1.0;
+  }
 }

@@ -10,6 +10,7 @@ import com.intellij.psi.PsiElementResolveResult;
 import com.intellij.psi.PsiPolyVariantReferenceBase;
 import com.intellij.psi.ResolveResult;
 import com.intellij.util.ArrayUtilRt;
+import java.util.Objects;
 import nl.jrdie.idea.springql.icons.QLIcons;
 import nl.jrdie.idea.springql.svc.QLIdeService;
 import nl.jrdie.idea.springql.types.SchemaMappingSummary;
@@ -17,70 +18,66 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.uast.UMethod;
 import org.jetbrains.uast.UastContextKt;
 
-import java.util.Objects;
-
 public class QLArgumentNamePolyReference extends PsiPolyVariantReferenceBase<PsiElement> {
 
-    public QLArgumentNamePolyReference(@NotNull PsiElement psiElement) {
-        super(Objects.requireNonNull(psiElement, "element"));
+  public QLArgumentNamePolyReference(@NotNull PsiElement psiElement) {
+    super(Objects.requireNonNull(psiElement, "element"));
+  }
+
+  @NotNull
+  @Override
+  public Object[] getVariants() {
+    final UMethod uMethod = UastContextKt.getUastParentOfType(myElement, UMethod.class);
+    if (uMethod == null) {
+      return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
     }
 
-    @NotNull
-    @Override
-    public Object[] getVariants() {
-        final UMethod uMethod = UastContextKt.getUastParentOfType(myElement, UMethod.class);
-        if (uMethod == null) {
-            return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
-        }
-
-        final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
-        final SchemaMappingSummary summary = svc.getSummaryForMethod(uMethod);
-        if (summary == null) {
-            return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
-        }
-
-        final FieldDefinition fieldDefinition = svc.getSchemaRegistry()
-                .getFieldDefinition(summary.getTypeName(), summary.getFieldName());
-        if (fieldDefinition == null) {
-            return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
-        }
-
-        return fieldDefinition
-                .getInputValueDefinitions()
-                .stream()
-                .map(input -> LookupElementBuilder.create(input.getName())
-                        .withTypeText(TypeUtil.simplePrint(input.getType()))
-                        .withPsiElement(input.getElement())
-                        .withIcon(QLIcons.INSTANCE.getVariable()))
-                .toArray(LookupElement[]::new);
+    final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
+    final SchemaMappingSummary summary = svc.getSummaryForMethod(uMethod);
+    if (summary == null) {
+      return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
     }
 
-    @NotNull
-    @Override
-    public ResolveResult[] multiResolve(boolean incompleteCode) {
-        final UMethod uMethod = UastContextKt.getUastParentOfType(myElement, UMethod.class);
-        if (uMethod == null) {
-            return ResolveResult.EMPTY_ARRAY;
-        }
-
-        final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
-        final SchemaMappingSummary summary = svc.getSummaryForMethod(uMethod);
-        if (summary == null) {
-            return ResolveResult.EMPTY_ARRAY;
-        }
-
-        final FieldDefinition fieldDefinition = svc.getSchemaRegistry()
-                .getFieldDefinition(summary.getTypeName(), summary.getFieldName());
-        if (fieldDefinition == null) {
-            return ResolveResult.EMPTY_ARRAY;
-        }
-
-        return fieldDefinition
-                .getInputValueDefinitions()
-                .stream()
-                .map(AbstractNode::getElement)
-                .filter(Objects::nonNull)
-                .map(PsiElementResolveResult::new)
-                .toArray(ResolveResult[]::new);
+    final FieldDefinition fieldDefinition =
+        svc.getSchemaRegistry().getFieldDefinition(summary.getTypeName(), summary.getFieldName());
+    if (fieldDefinition == null) {
+      return ArrayUtilRt.EMPTY_OBJECT_ARRAY;
     }
+
+    return fieldDefinition.getInputValueDefinitions().stream()
+        .map(
+            input ->
+                LookupElementBuilder.create(input.getName())
+                    .withTypeText(TypeUtil.simplePrint(input.getType()))
+                    .withPsiElement(input.getElement())
+                    .withIcon(QLIcons.INSTANCE.getVariable()))
+        .toArray(LookupElement[]::new);
+  }
+
+  @NotNull
+  @Override
+  public ResolveResult[] multiResolve(boolean incompleteCode) {
+    final UMethod uMethod = UastContextKt.getUastParentOfType(myElement, UMethod.class);
+    if (uMethod == null) {
+      return ResolveResult.EMPTY_ARRAY;
+    }
+
+    final QLIdeService svc = myElement.getProject().getService(QLIdeService.class);
+    final SchemaMappingSummary summary = svc.getSummaryForMethod(uMethod);
+    if (summary == null) {
+      return ResolveResult.EMPTY_ARRAY;
+    }
+
+    final FieldDefinition fieldDefinition =
+        svc.getSchemaRegistry().getFieldDefinition(summary.getTypeName(), summary.getFieldName());
+    if (fieldDefinition == null) {
+      return ResolveResult.EMPTY_ARRAY;
+    }
+
+    return fieldDefinition.getInputValueDefinitions().stream()
+        .map(AbstractNode::getElement)
+        .filter(Objects::nonNull)
+        .map(PsiElementResolveResult::new)
+        .toArray(ResolveResult[]::new);
+  }
 }
