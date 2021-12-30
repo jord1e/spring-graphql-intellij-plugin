@@ -60,6 +60,7 @@ qodana {
     cachePath.set(projectDir.resolve(".qodana").canonicalPath)
     reportPath.set(projectDir.resolve("build/reports/inspections").canonicalPath)
     saveReport.set(true)
+    dockerContainerName.set("2021.3-eap")
     showReport.set(System.getenv("QODANA_SHOW_REPORT").toBoolean())
 }
 
