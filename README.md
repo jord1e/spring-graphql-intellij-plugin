@@ -8,14 +8,17 @@
 
 <!-- Plugin description -->
 
-This plugin adds support for [Spring GraphQL](https://spring.io/projects/spring-graphql). **The plugin is currently Work in Progress!**
+This plugin adds support for [Spring GraphQL](https://spring.io/projects/spring-graphql).
+
+**The plugin is currently Work in Progress. Follow development on the [jord1e/spring-graphql-intellij-plugin GitHub repository](https://github.com/jord1e/spring-graphql-intellij-plugin).**
 
 Features:
 
 - Autocompletion of types and fields in @SchemaMapping annotations
-- Navigation between mappings and the schema
-- Checks for @BatchMapping return type
-- Data loader view
+- Navigation between method mappings and the schema
+- Various inspections
+- Data fetchers in project view
+- Autocompletion for @Argument names
 <!-- Plugin description end -->
 
 ## Installation

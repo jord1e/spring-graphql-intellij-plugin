@@ -9,7 +9,12 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementResolveResult;
 import com.intellij.psi.PsiPolyVariantReferenceBase;
 import com.intellij.psi.ResolveResult;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import javax.swing.Icon;
 import nl.jrdie.idea.springql.icons.QLIcons;
+import nl.jrdie.idea.springql.ide.codeInsight.completion.QLForeignFieldNameInsertHandler;
 import nl.jrdie.idea.springql.index.entry.SchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.svc.QLIdeService;
 import nl.jrdie.idea.springql.utils.QLIdeUtil;
@@ -18,11 +23,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.uast.UAnnotation;
 import org.jetbrains.uast.UMethod;
 import org.jetbrains.uast.UastContextKt;
-
-import javax.swing.Icon;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 public class QLFieldPolyReference extends PsiPolyVariantReferenceBase<PsiElement> {
 
@@ -118,6 +118,7 @@ public class QLFieldPolyReference extends PsiPolyVariantReferenceBase<PsiElement
             .withIcon(icon)
             .withBoldness(isChildOfCurrentAnnotationParentType)
             .withStrikeoutness(fieldDefinition.hasDirective("deprecated"))
+            .withInsertHandler(new QLForeignFieldNameInsertHandler(fieldDefinition))
             .withTypeText(typeText);
 
     return PrioritizedLookupElement.withPriority(

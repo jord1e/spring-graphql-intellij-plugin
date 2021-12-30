@@ -39,6 +39,18 @@ object UClassAnnotatorUtil {
             return true
         }
 
-        throw IllegalArgumentException("Can not apply annotation '$fqName' to element $sourcePsi (FQN: ${sourcePsi::class.qualifiedName})")
+        throw IllegalArgumentException("Could not add annotation '$fqName' to element $sourcePsi (FQN: ${sourcePsi::class.qualifiedName})")
+    }
+
+    fun setAnnotationParameterStringValue(sourcePsi: PsiElement, attribute: String, valueString: String) {
+        val strToBeApplied = "\"" + valueString + "\""
+        val factory = JavaPsiFacade.getInstance(sourcePsi.project).elementFactory
+        if (sourcePsi is PsiAnnotation) {
+            val stringAttrValue = factory.createExpressionFromText(strToBeApplied, null)
+            sourcePsi.setDeclaredAttributeValue(attribute, stringAttrValue)
+            return
+        }
+
+        throw IllegalArgumentException("Could not set attribute '$attribute' to '$strToBeApplied' on annotation $sourcePsi (FQN: ${sourcePsi::class.qualifiedName})")
     }
 }

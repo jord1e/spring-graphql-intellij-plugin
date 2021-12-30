@@ -9,15 +9,14 @@ import com.intellij.psi.PsiElementResolveResult;
 import com.intellij.psi.PsiPolyVariantReferenceBase;
 import com.intellij.psi.ResolveResult;
 import com.intellij.util.ArrayUtilRt;
+import java.util.Objects;
+import javax.swing.Icon;
 import nl.jrdie.idea.springql.icons.QLIcons;
 import nl.jrdie.idea.springql.index.entry.SchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.svc.QLIdeService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.uast.UAnnotation;
 import org.jetbrains.uast.UastContextKt;
-
-import javax.swing.Icon;
-import java.util.Objects;
 
 public class QLTypeNamePolyReference extends PsiPolyVariantReferenceBase<PsiElement> {
 

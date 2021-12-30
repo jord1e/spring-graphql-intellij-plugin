@@ -7,14 +7,13 @@ import com.intellij.lang.jsgraphql.types.language.ObjectTypeDefinition;
 import com.intellij.lang.jsgraphql.types.language.SourceLocation;
 import com.intellij.lang.jsgraphql.types.schema.idl.TypeDefinitionRegistry;
 import com.intellij.psi.PsiElement;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class QLSchemaRegistry {
 
@@ -125,5 +124,10 @@ public class QLSchemaRegistry {
   @NotNull
   public GraphQLSchemaInfo getGraphQLSchemaInfo() {
     return graphQLSchemaInfo;
+  }
+
+  @NotNull
+  public TypeDefinitionRegistry getTypeDefinitionRegistry() {
+    return typeDefinitionRegistry;
   }
 }
