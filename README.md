@@ -1,6 +1,4 @@
-# Spring GraphQL Support for IntelliJ IDEA (Ultimate Edition)
-
-:warning: CURRENTLY IN DEVELOPMENT
+# Spring GraphQL Support for IntelliJ IDEA
 
 ![Build](https://github.com/jord1e/spring-graphql-intellij-plugin/workflows/Build/badge.svg)
 [![Version](https://img.shields.io/jetbrains/plugin/v/17963-spring-graphql-support.svg)](https://plugins.jetbrains.com/plugin/17963-spring-graphql-support)
@@ -8,7 +6,7 @@
 
 <!-- Plugin description -->
 
-This plugin adds support for [Spring GraphQL](https://spring.io/projects/spring-graphql).
+This plugin adds support for [Spring GraphQL](https://spring.io/projects/spring-graphql) to IntelliJ IDEA based IDEs supporting Java development.
 
 **The plugin is currently Work in Progress. Follow development on the [jord1e/spring-graphql-intellij-plugin GitHub repository](https://github.com/jord1e/spring-graphql-intellij-plugin).**
 
@@ -59,6 +57,8 @@ Features:
 
 Much of the initial development was inspired by the [DGS plugin](https://github.com/Netflix/dgs-intellij-plugin).
 
-This plugin reuses `apollo.svg`, `apollo_dark.svg`, `query.svg`, and `fragment.svg` icons from the [GraphQL plugin](https://github.com/jimkyndemeyer/js-graphql-intellij-plugin) (MIT).
+This plugin reuses the `apollo.svg`, `apollo_dark.svg`, `query.svg`, and `fragment.svg` icons from the [GraphQL plugin](https://github.com/jimkyndemeyer/js-graphql-intellij-plugin) (MIT).
 
 This plugin uses (modified) [JetBrains icons](https://jetbrains.design/intellij/resources/icons_list/) (predominantly Apache 2.0).
+
+GraphQL logo by the [GraphQL Foundation](https://graphql.org/), colorized with `#6DB33F` (Spring brand color).

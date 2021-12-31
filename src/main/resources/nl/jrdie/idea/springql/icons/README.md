@@ -21,5 +21,7 @@ apollo(_dark).svg > From GraphQL Plugin
 
 schemaMappingMethod(_dark).svg > AllIcons.Debugger.WatchLastReturnValue
 introspectionFieldType.svg > TestManagementIcons.Icons.TestExecutionStatus
+batchMappingMethod(_dark).svg > AopCommonIcons.Icons.After_throwing_advice
+queryRepository(_dark).svg > DatabaseIcons.Icons.External_schema_object
 
 

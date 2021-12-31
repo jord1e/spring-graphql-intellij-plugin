@@ -11,19 +11,21 @@ import org.jetbrains.uast.UMethod
 
 interface QLIdeIndex {
 
-    fun schemaMappingByAnnotation(uAnnotation: UAnnotation): Set<SchemaMappingIndexEntry>
+    fun schemaMappingByAnnotation(uAnnotation: UAnnotation): List<SchemaMappingIndexEntry>
 
-    fun methodSchemaMappingByAnnotation(uAnnotation: UAnnotation): Set<QLMethodSchemaMappingIndexEntry>
+    fun methodSchemaMappingByAnnotation(uAnnotation: UAnnotation): List<QLMethodSchemaMappingIndexEntry>
 
     fun methodSchemaMappingByMethod(uMethod: UMethod): List<QLMethodSchemaMappingIndexEntry>
 
-    fun schemaMappingByClass(uClass: UClass): Set<QLClassSchemaMappingIndexEntry>
+    fun schemaMappingByClass(uClass: UClass): List<QLClassSchemaMappingIndexEntry>
 
-    fun schemaMappingBySchemaPsi(psiElement: PsiElement): Set<QLMethodSchemaMappingIndexEntry>
+    fun schemaMappingBySchemaPsi(psiElement: PsiElement): List<QLMethodSchemaMappingIndexEntry>
 
-    fun allMethodSchemaMappingEntries(): Set<QLMethodSchemaMappingIndexEntry>
+    fun allMethodSchemaMappingEntries(): List<QLMethodSchemaMappingIndexEntry>
 
-    fun allMethodBatchMappingEntries(): Set<QLMethodBatchMappingIndexEntry>
+    fun allMethodBatchMappingEntries(): List<QLMethodBatchMappingIndexEntry>
+
+    fun schemaMappingByMethod(uMethod: UMethod): List<SchemaMappingIndexEntry>
 
     interface Builder<B : Builder<B>> {
 

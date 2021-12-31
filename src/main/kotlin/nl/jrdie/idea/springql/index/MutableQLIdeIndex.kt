@@ -11,24 +11,28 @@ import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 
+@Suppress("FoldInitializerAndIfToElvis")
 class MutableQLIdeIndex(
     private val methodSchemaMappingEntries: Set<QLMethodSchemaMappingIndexEntry>,
     private val classSchemaMappingEntries: Set<QLClassSchemaMappingIndexEntry>,
     private val methodBatchMappingEntries: Set<QLMethodBatchMappingIndexEntry>,
 ) : QLIdeIndex {
 
-    override fun schemaMappingByAnnotation(uAnnotation: UAnnotation): Set<SchemaMappingIndexEntry> {
-        return methodSchemaMappingEntries
-            .filterSmart { it.annotationPsi == uAnnotation.sourcePsi }
-            .toSet() union classSchemaMappingEntries
-            .filterSmart { it.annotationPsi == uAnnotation.sourcePsi }
-            .toSet()
+    override fun schemaMappingByAnnotation(uAnnotation: UAnnotation): List<SchemaMappingIndexEntry> {
+        return (
+            methodSchemaMappingByAnnotation(uAnnotation) union classSchemaMappingEntries
+                .filterSmart { it.annotationPsi == uAnnotation.sourcePsi }
+                .toList()
+            ).toList()
     }
 
-    override fun methodSchemaMappingByAnnotation(uAnnotation: UAnnotation): Set<QLMethodSchemaMappingIndexEntry> {
+    override fun methodSchemaMappingByAnnotation(uAnnotation: UAnnotation): List<QLMethodSchemaMappingIndexEntry> {
         return methodSchemaMappingEntries
-            .filterSmart { PsiManager.getInstance(it.annotationPsi.project).areElementsEquivalent(it.annotationPsi, uAnnotation.sourcePsi) }
-            .toSet()
+            .filterSmart {
+                PsiManager.getInstance(uAnnotation.sourcePsi!!.project)
+                    .areElementsEquivalent(it.annotationPsi, uAnnotation.sourcePsi)
+            }
+            .toList()
     }
 
     override fun methodSchemaMappingByMethod(uMethod: UMethod): List<QLMethodSchemaMappingIndexEntry> {
@@ -39,24 +43,42 @@ class MutableQLIdeIndex(
             .toList()
     }
 
-    override fun schemaMappingByClass(uClass: UClass): Set<QLClassSchemaMappingIndexEntry> {
+    override fun schemaMappingByClass(uClass: UClass): List<QLClassSchemaMappingIndexEntry> {
         return classSchemaMappingEntries
             .filterSmart { it.classPsi == uClass.sourcePsi }
-            .toSet()
+            .toList()
     }
 
-    override fun schemaMappingBySchemaPsi(psiElement: PsiElement): Set<QLMethodSchemaMappingIndexEntry> {
+    override fun schemaMappingBySchemaPsi(psiElement: PsiElement): List<QLMethodSchemaMappingIndexEntry> {
         return methodSchemaMappingEntries
-            .filterSmart { it.schemaPsi.contains(psiElement) }
-            .toSet()
+            .filterSmart {
+                it.schemaPsi.any { schemaPsi ->
+                    PsiManager.getInstance(psiElement.project).areElementsEquivalent(schemaPsi, psiElement)
+                }
+            }
+            .toList()
     }
 
-    override fun allMethodSchemaMappingEntries(): Set<QLMethodSchemaMappingIndexEntry> {
-        return methodSchemaMappingEntries
+    override fun allMethodSchemaMappingEntries(): List<QLMethodSchemaMappingIndexEntry> {
+        return methodSchemaMappingEntries.toList()
     }
 
-    override fun allMethodBatchMappingEntries(): Set<QLMethodBatchMappingIndexEntry> {
-        return methodBatchMappingEntries
+    override fun allMethodBatchMappingEntries(): List<QLMethodBatchMappingIndexEntry> {
+        return methodBatchMappingEntries.toList()
+    }
+
+    override fun schemaMappingByMethod(uMethod: UMethod): List<SchemaMappingIndexEntry> {
+        val sourcePsi = uMethod.sourcePsi
+        if (sourcePsi == null) {
+            return emptyList()
+        }
+
+        val psiManager = PsiManager.getInstance(sourcePsi.project)
+        val schemaMethodMappings = methodSchemaMappingEntries
+            .filterSmart { psiManager.areElementsEquivalent(it.methodPsi, sourcePsi) }
+        val batchMethodMappings = methodBatchMappingEntries
+            .filterSmart { psiManager.areElementsEquivalent(it.methodPsi, sourcePsi) }
+        return (schemaMethodMappings union batchMethodMappings).toList()
     }
 
     class MutableQLIdeIndexBuilder : QLIdeIndex.Builder<MutableQLIdeIndexBuilder> {

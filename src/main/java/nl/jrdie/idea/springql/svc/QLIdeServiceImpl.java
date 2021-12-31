@@ -1,5 +1,6 @@
 package nl.jrdie.idea.springql.svc;
 
+import com.intellij.ide.projectView.ProjectView;
 import com.intellij.lang.java.JavaLanguage;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaInfo;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaProvider;
@@ -25,13 +26,28 @@ import com.intellij.psi.stubs.StubIndex;
 import com.intellij.psi.stubs.StubIndexKey;
 import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.util.messages.Topic;
+import java.text.NumberFormat;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import kotlin.collections.CollectionsKt;
 import nl.jrdie.idea.springql.GraphQLSchemaEventListener;
 import nl.jrdie.idea.springql.index.MutableQLIdeIndex;
 import nl.jrdie.idea.springql.index.QLIdeIndex;
 import nl.jrdie.idea.springql.index.entry.QLClassSchemaMappingIndexEntry;
+import nl.jrdie.idea.springql.index.entry.QLMethodBatchMappingIndexEntry;
 import nl.jrdie.idea.springql.index.entry.QLMethodSchemaMappingIndexEntry;
+import nl.jrdie.idea.springql.index.entry.SchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.index.processor.QLAnnotationIndexProcessor;
 import nl.jrdie.idea.springql.types.SchemaMappingSummary;
+import nl.jrdie.idea.springql.types.SchemaMappingType;
 import nl.jrdie.idea.springql.utils.JSGraphQLPlugin;
 import nl.jrdie.idea.springql.utils.JSGraphQLVersionBypassUtils;
 import nl.jrdie.idea.springql.utils.QLIdeUtil;
@@ -46,17 +62,6 @@ import org.jetbrains.uast.UElement;
 import org.jetbrains.uast.ULiteralExpression;
 import org.jetbrains.uast.UMethod;
 import org.jetbrains.uast.UastContextKt;
-
-import java.text.NumberFormat;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
@@ -138,7 +143,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
               (GraphQLSchemaEventListener)
                   schemaVersion -> {
                     // Force reloading of the index when a schema file changes
-                    QLIdeServiceImpl.this.getIndex(true);
+                    getIndex(true);
                   });
     } catch (Exception e) {
       throw new IllegalStateException(
@@ -234,6 +239,10 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
             + ENGLISH_NUMBER_FORMAT.format(indexTime.toNanos())
             + " ns)");
 
+    // Necessary to refresh nodes in project window;
+    //  see 'nl.jrdie.idea.springql.ide.tree.QLProjectTreeStructureProvider'.
+    ProjectView.getInstance(this.project).refresh();
+
     return this.cachedIdeIndex = indexBuilder.get().build();
   }
 
@@ -311,13 +320,16 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
   public boolean needsControllerAnnotation(@NotNull UClass uClass) {
     Objects.requireNonNull(uClass, "uClass");
 
+    // TODO Meta-annotations
     if (UExtKt.hasUAnnotation(uClass, SPRING_CONTROLLER_FQN)) {
       return false;
     }
 
     //noinspection UnnecessaryLocalVariable
     final boolean containsAnnotations =
-        uClass.getUAnnotations().stream()
+        Arrays.stream(uClass.getMethods())
+            .map(UMethod::getUAnnotations)
+            .flatMap(List::stream)
             .anyMatch(
                 uAnnotation ->
                     isSchemaMappingAnnotation(uAnnotation)
@@ -368,7 +380,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
     Objects.requireNonNull(uMethod, "uMethod");
 
     QLIdeIndex index = getIndex();
-    List<QLMethodSchemaMappingIndexEntry> a = index.methodSchemaMappingByMethod(uMethod);
+    List<SchemaMappingIndexEntry> a = index.schemaMappingByMethod(uMethod);
 
     if (a.isEmpty()) {
       return null;
@@ -378,13 +390,13 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
       throw new IllegalStateException("Should not happen");
     }
 
-    QLMethodSchemaMappingIndexEntry b = a.get(0);
+    SchemaMappingIndexEntry b = a.get(0);
 
     String typeName = b.getParentType();
     if (typeName == null || typeName.isEmpty()) {
       UClass uClass = UastContextKt.getUastParentOfType(uMethod.getSourcePsi(), UClass.class);
       if (uClass != null) {
-        Set<QLClassSchemaMappingIndexEntry> c = index.schemaMappingByClass(uClass);
+        List<QLClassSchemaMappingIndexEntry> c = index.schemaMappingByClass(uClass);
 
         if (c.size() > 1) {
           throw new IllegalStateException(
@@ -418,7 +430,12 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
         b.getAnnotationPsi(),
         schemaPsi,
         b.getUAnnotation(),
-        QLIdeUtil.INSTANCE.reduceSchemaMappingAnnotationName(b.getUAnnotation()));
+        QLIdeUtil.INSTANCE.reduceSchemaMappingAnnotationName(b.getUAnnotation()),
+        uMethod,
+        b instanceof QLMethodBatchMappingIndexEntry
+            ? SchemaMappingType.BATCH_MAPPING
+            : SchemaMappingType.SCHEMA_MAPPING,
+        Objects.requireNonNull(uMethod.getSourcePsi()));
   }
 
   @Override
@@ -516,6 +533,34 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
   @NotNull
   @Override
+  public List<SchemaMappingSummary> getThoroughSchemaMappingSummaryView() {
+    return getIndex().allMethodSchemaMappingEntries().stream()
+        .map(QLMethodSchemaMappingIndexEntry::getUMethod)
+        .map(this::getSummaryForMethod)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
+  }
+
+  @NotNull
+  @Override
+  public List<SchemaMappingSummary> getThoroughSummaryView() {
+    return List.copyOf(
+        CollectionsKt.union(
+            getThoroughSchemaMappingSummaryView(), getThoroughBatchMappingSummaryView()));
+  }
+
+  @NotNull
+  @Override
+  public List<SchemaMappingSummary> getThoroughBatchMappingSummaryView() {
+    return getIndex().allMethodBatchMappingEntries().stream()
+        .map(QLMethodBatchMappingIndexEntry::getUMethod)
+        .map(this::getSummaryForMethod)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
+  }
+
+  @NotNull
+  @Override
   public QLSchemaRegistry getSchemaRegistry() {
     // TODO Cache registry?
     return new QLSchemaRegistry(getTypeDefinitionRegistry(), getGraphQLSchemaInfo());
@@ -586,7 +631,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
                 .invoke(schemaTracker);
         long graphQLModificationCount =
             (long)
-                schemaTracker
+                modificationTracker
                     .getClass()
                     .getMethod("getModificationCount")
                     .invoke(modificationTracker);

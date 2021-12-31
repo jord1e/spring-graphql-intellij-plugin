@@ -8,7 +8,7 @@ import com.intellij.lang.jsgraphql.types.language.FieldDefinition
 import com.intellij.openapi.components.service
 import nl.jrdie.idea.springql.svc.QLIdeService
 import nl.jrdie.idea.springql.utils.UClassAnnotatorUtil
-import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUastParentOfType
 
 @Suppress("FoldInitializerAndIfToElvis")
@@ -32,12 +32,13 @@ class QLForeignFieldNameInsertHandler(
             return
         }
 
-        val uAnnotation = context.file.findElementAt(context.startOffset).getUastParentOfType<UAnnotation>()
-        if (uAnnotation == null) {
+        val uMethod = context.file.findElementAt(context.startOffset).getUastParentOfType<UMethod>()
+        if (uMethod == null) {
             return
         }
 
-        if (svc.index.methodSchemaMappingByAnnotation(uAnnotation).isEmpty()) {
+        val summary = svc.getSummaryForMethod(uMethod)
+        if (summary == null) {
             // Not a method mapping
             // TODO Spring meta-annotation support
             return
@@ -49,11 +50,9 @@ class QLForeignFieldNameInsertHandler(
         }
 
         UClassAnnotatorUtil.setAnnotationParameterStringValue(
-            uAnnotation.sourcePsi!!,
+            summary.annotationPsi,
             "typeName",
             parentTypeDefinition.name!!
         )
-
-//        println((item.psiElement as GraphQLFieldDefinition).nameIdentifier.referenceName)
     }
 }

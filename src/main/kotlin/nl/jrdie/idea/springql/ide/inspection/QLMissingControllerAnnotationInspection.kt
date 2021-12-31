@@ -5,6 +5,7 @@ import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.components.service
+import com.intellij.psi.PsiClass
 import nl.jrdie.idea.springql.ide.quickfix.QLAddControllerAnnotationQuickFix
 import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UClass
@@ -17,10 +18,12 @@ class QLMissingControllerAnnotationInspection : AbstractBaseUastLocalInspectionT
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        val project = uClass.sourcePsi?.project
-        if (project == null) {
+        val sourcePsi = uClass.sourcePsi
+        if (sourcePsi !is PsiClass) {
             return null
         }
+
+        val project = sourcePsi.project
 
         val svc = project.service<QLIdeService>()
         if (!svc.isApplicableProject(project)) {
@@ -32,7 +35,7 @@ class QLMissingControllerAnnotationInspection : AbstractBaseUastLocalInspectionT
         }
 
         val problemDescriptor = manager.createProblemDescriptor(
-            uClass.sourcePsi!!,
+            sourcePsi.identifyingElement!!,
             "Add @Controller annotation",
             QLAddControllerAnnotationQuickFix(),
             ProblemHighlightType.WARNING,

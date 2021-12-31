@@ -24,6 +24,8 @@ object QLIdeUtil {
             MUTATION_MAPPING_FQN,
             SUBSCRIPTION_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "name")
                 ?: AliasForUtil.findValue(uAnnotation, "value")
+            BATCH_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "field")
+                ?: AliasForUtil.findValue(uAnnotation, "value")
             else -> null
         }
 
@@ -56,6 +58,7 @@ object QLIdeUtil {
             MUTATION_MAPPING_FQN -> "Mutation"
             SUBSCRIPTION_MAPPING_FQN -> "Subscription"
             SCHEMA_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "typeName")
+            BATCH_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "typeName")
             else -> null
         }
     }

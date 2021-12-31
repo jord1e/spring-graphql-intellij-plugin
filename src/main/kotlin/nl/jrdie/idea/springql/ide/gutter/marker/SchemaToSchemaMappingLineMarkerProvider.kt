@@ -6,6 +6,7 @@ import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.lang.jsgraphql.psi.GraphQLFieldDefinition
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
 import com.intellij.psi.util.nextLeaf
 import nl.jrdie.idea.springql.icons.QLIcons
 import nl.jrdie.idea.springql.svc.QLIdeService
@@ -17,7 +18,6 @@ class SchemaToSchemaMappingLineMarkerProvider : RelatedItemLineMarkerProvider() 
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         if (element !is GraphQLFieldDefinition) {
-            // Fastest check, so put it up top
             return
         }
 
@@ -26,42 +26,20 @@ class SchemaToSchemaMappingLineMarkerProvider : RelatedItemLineMarkerProvider() 
             return
         }
 
-        val index = svc.index.schemaMappingBySchemaPsi(element)
+        @Suppress("DEPRECATION")
+        val index = svc.thoroughSummaryView
+            .filter { PsiManager.getInstance(element.project).areElementsEquivalent(it.schemaPsi, element) }
         if (index.isEmpty()) {
             return
         }
 
-//        val graphQlService = element.project.service<QLIdeServiceImpl>()
-//        val indexEntry = graphQlService.getAnnotationIndex().findMappingsByFieldDefinition(element)
-//        if (indexEntry.isNotEmpty()) {
         val lineMarkerInfo = NavigationGutterIconBuilder
-//                .create(AllIcons.Ide.Link)
-            .create(QLIcons.SpringGraphGutterGreyQL)
-//            .setPopupTitle(
-// //                    "Controller mappings for ${
-// //                        GraphQLPsiUtil.getTypeName(
-// //                            element,
-// //                            null
-// //                        )
-// //                    }.${element.nameIdentifier.text}"
-//            )
+            .create(QLIcons.SpringGraphGutterGreenQL)
             .setTooltipText("Navigate to controller mapping")
             .setTargets(index.mapNotNull { it.annotationPsi.nextLeaf() })
             .setEmptyPopupText("No controller mappings")
             .createLineMarkerInfo(element.nextLeaf()!!)
 
         result.add(lineMarkerInfo)
-//        }
-
-//        if (indexEntry == null) {
-//            return
-//        }
-//
-//        val lineMarkerInfo = NavigationGutterIconBuilder
-//            .create(AllIcons.Ide.Link)
-//            .setTooltipText("Navigate to controller mapping")
-//            .setTargets(indexEntry.annotation.sourcePsi!!)
-//            .createLineMarkerInfo(element)
-//        result.add(lineMarkerInfo)
     }
 }

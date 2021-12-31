@@ -11,6 +11,7 @@ object QLIcons {
     }
 
     val Apollo = getIcon("/nl/jrdie/idea/springql/icons/apollo.svg")
+    val BatchMappingMethod = getIcon("/nl/jrdie/idea/springql/icons/batchMappingMethod.svg")
     val BuildInDirective = getIcon("/nl/jrdie/idea/springql/icons/buildInDirective.svg")
     val Directive = getIcon("/nl/jrdie/idea/springql/icons/directive.svg")
     val Enum = getIcon("/nl/jrdie/idea/springql/icons/enum.svg")
@@ -21,6 +22,7 @@ object QLIcons {
     val Mutation = getIcon("/nl/jrdie/idea/springql/icons/mutation.svg")
     val OperationVariable = getIcon("/nl/jrdie/idea/springql/icons/operationVariable.svg")
     val Query = getIcon("/nl/jrdie/idea/springql/icons/query.svg")
+    val QueryRepository = getIcon("/nl/jrdie/idea/springql/icons/queryRepository.svg")
     val Scalar = getIcon("/nl/jrdie/idea/springql/icons/scalar.svg")
     val SchemaMappingMethod = getIcon("/nl/jrdie/idea/springql/icons/schemaMappingMethod.svg")
     val SpringGraphQL = getIcon("/nl/jrdie/idea/springql/icons/springGraphQL.svg")

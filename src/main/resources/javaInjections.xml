@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="LanguageInjectionConfiguration">
+    <injection language="GraphQL" injector-id="java">
+    <display-name>GroovyShell (groovy.lang)</display-name>
+    <place><![CDATA[psiParameter().ofMethod(0, psiMethod().withName("query").withParameters("java.lang.String").definedInClass("org.springframework.graphql.test.tester.GraphQlTester"))]]></place>
+    </injection>
+</component>

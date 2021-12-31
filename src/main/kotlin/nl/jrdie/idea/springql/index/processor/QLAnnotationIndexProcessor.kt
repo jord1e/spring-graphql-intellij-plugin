@@ -65,7 +65,8 @@ class QLAnnotationIndexProcessor<B : QLIdeIndex.Builder<B>>(
                 field,
                 uAnnotation.sourcePsi!!,
                 schemaPsi,
-                uAnnotation
+                uAnnotation,
+                uMethod
             )
         )
     }
@@ -90,7 +91,9 @@ class QLAnnotationIndexProcessor<B : QLIdeIndex.Builder<B>>(
                 uAnnotation.sourcePsi!!,
                 uMethod.sourcePsi!!,
                 ideService.isValidBatchMappingReturnType(uMethod),
-                schemaPsi
+                schemaPsi,
+                uAnnotation,
+                uMethod
             )
         )
     }

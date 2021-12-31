@@ -4,11 +4,14 @@
 
 ### Added
 
-## [0.0.2-alpha.5]
+- GraphQL injection for `GraphQlTester#query(String)`
 
 ### Fixed
 
 - IntelliJ IDEA `2021.3.1` compatibility
+- Correct display of Spring GraphQL data fetchers, and batch loaders in project window
+- Intention for adding `@Controller` does not highlight the entire class anymore
+- Autocompletion on `@BatchMapping` fields now changes the `typeName`
 
 ## [0.0.2-alpha.4]
 

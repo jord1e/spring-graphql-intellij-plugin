@@ -1,9 +1,0 @@
-type Test {
-    hello: String
-}
-
-enum A {
-    A
-    B
-    C
-}

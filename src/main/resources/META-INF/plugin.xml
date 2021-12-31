@@ -6,6 +6,8 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
+    <depends
+  >org.intellij.intelliLang</depends> <!-- TODO make IntelliLang optional -->
     <!--    <depends>com.intellij.java</depends>-->
     <depends>com.intellij.lang.jsgraphql</depends>
 
@@ -24,6 +26,10 @@
         <codeInsight.lineMarkerProvider
       language="GraphQL"
       implementationClass="nl.jrdie.idea.springql.ide.gutter.marker.SchemaToSchemaMappingLineMarkerProvider"
+    />
+
+        <errorHandler
+      implementation="nl.jrdie.idea.springql.ide.diagnostics.QLGitHubErrorReporter"
     />
 
         <localInspection
@@ -93,5 +99,9 @@
       kind="java"
       coordinate="org.springframework.graphql:spring-graphql-test"
     />
+    </extensions>
+
+    <extensions defaultExtensionNs="org.intellij.intelliLang">
+        <injectionConfig config="javaInjections.xml" />
     </extensions>
 </idea-plugin>

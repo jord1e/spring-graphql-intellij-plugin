@@ -4,6 +4,8 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.project.Project
 import nl.jrdie.idea.springql.utils.UClassAnnotatorUtil
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.getUastParentOfType
 
 class QLAddControllerAnnotationQuickFix : LocalQuickFix {
 
@@ -12,6 +14,9 @@ class QLAddControllerAnnotationQuickFix : LocalQuickFix {
     override fun getName(): String = "Add @Controller annotation"
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        UClassAnnotatorUtil.addAnnotation(descriptor.psiElement!!, "org.springframework.stereotype.Controller")
+        val sourcePsi = descriptor.psiElement?.getUastParentOfType<UClass>()?.sourcePsi
+        if (sourcePsi != null) {
+            UClassAnnotatorUtil.addAnnotation(sourcePsi, "org.springframework.stereotype.Controller")
+        }
     }
 }

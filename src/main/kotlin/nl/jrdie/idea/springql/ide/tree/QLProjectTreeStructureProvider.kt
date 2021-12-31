@@ -46,7 +46,7 @@ class QLRootNode(
     override fun getChildren(): MutableCollection<out AbstractTreeNode<*>> {
         val list = mutableListOf<AbstractTreeNode<*>>()
         list.add(QLSchemaMappingRootNode(ideService, myProject, "Data Fetchers", settings))
-        list.add(QLSchemaMappingRootNode(ideService, myProject, "Batch Loaders", settings))
+        list.add(QLBatchMappingRootNode(ideService, myProject, "Batch Loaders", settings))
         return list
     }
 
@@ -61,13 +61,16 @@ class QLSchemaMappingRootNode(
 ) : ProjectViewNode<String>(myProject, text, settings) {
 
     override fun update(presentation: PresentationData) {
-        presentation.addText(text, SimpleTextAttributes.REGULAR_ATTRIBUTES)
+        presentation.addText(
+            text + " (${ideService.thoroughSchemaMappingSummaryView.size})",
+            SimpleTextAttributes.REGULAR_ATTRIBUTES
+        )
         presentation.setIcon(QLIcons.SchemaMappingMethod)
     }
 
     override fun getChildren(): MutableCollection<out AbstractTreeNode<*>> {
-        return ideService.index.allMethodSchemaMappingEntries()
-            .map { QLSchemaMappingNode(myProject, "${it.parentType}.${it.field}", it.methodPsi, settings) }
+        return ideService.thoroughSchemaMappingSummaryView
+            .map { QLSchemaMappingNode(myProject, "${it.typeName}.${it.fieldName}", it.methodPsi, settings) }
             .toMutableList()
     }
 
@@ -84,6 +87,65 @@ class QLSchemaMappingNode(
     override fun update(presentation: PresentationData) {
         presentation.addText(schemaLocation, SimpleTextAttributes.REGULAR_ATTRIBUTES)
         presentation.setIcon(QLIcons.SchemaMappingMethod)
+    }
+
+    override fun getChildren(): MutableCollection<out AbstractTreeNode<*>> = mutableListOf()
+
+    override fun contains(file: VirtualFile) = false
+
+    override fun navigate(requestFocus: Boolean) {
+        FileEditorManager.getInstance(annotationElement.project)
+            .openEditor(
+                OpenFileDescriptor(
+                    annotationElement.project,
+                    annotationElement.containingFile.virtualFile,
+                    annotationElement.textOffset
+                ),
+                true
+            )
+    }
+
+    override fun canNavigate() = true
+
+    override fun canNavigateToSource() = true
+
+    override fun isAlwaysLeaf() = true
+}
+
+class QLBatchMappingRootNode(
+    private val ideService: QLIdeService,
+    myProject: Project,
+    private val text: String,
+    settings: ViewSettings?
+) : ProjectViewNode<String>(myProject, text, settings) {
+
+    override fun update(presentation: PresentationData) {
+        presentation.addText(
+            text + " (${ideService.thoroughBatchMappingSummaryView.size})",
+            SimpleTextAttributes.REGULAR_ATTRIBUTES
+        )
+        presentation.setIcon(QLIcons.BatchMappingMethod)
+    }
+
+    override fun getChildren(): MutableCollection<out AbstractTreeNode<*>> {
+        return ideService.thoroughBatchMappingSummaryView
+            .map { QLBatchMappingNode(myProject, "${it.typeName}.${it.fieldName}", it.methodPsi, settings) }
+            .toMutableList()
+    }
+
+    override fun contains(file: VirtualFile) = false
+}
+
+class QLBatchMappingNode(
+    project: Project,
+    private val schemaLocation: String,
+    private val annotationElement: PsiElement,
+    viewSettings: ViewSettings?
+) : ProjectViewNode<String>(project, schemaLocation, viewSettings) {
+
+    override fun update(presentation: PresentationData) {
+        presentation.addText(schemaLocation, SimpleTextAttributes.REGULAR_ATTRIBUTES)
+        presentation.setIcon(QLIcons.BatchMappingMethod)
     }
 
     override fun getChildren(): MutableCollection<out AbstractTreeNode<*>> = mutableListOf()

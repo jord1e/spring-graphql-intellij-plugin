@@ -56,5 +56,16 @@ public interface QLIdeService {
   List<UAnnotation> findNearestSchemaMappingAnnotations(UElement uElement);
 
   @NotNull
+  List<SchemaMappingSummary> getThoroughSchemaMappingSummaryView();
+
+  /** @deprecated Figure out a better way to do this */
+  @Deprecated
+  @NotNull
+  List<SchemaMappingSummary> getThoroughSummaryView();
+
+  @NotNull
+  List<SchemaMappingSummary> getThoroughBatchMappingSummaryView();
+
+  @NotNull
   QLSchemaRegistry getSchemaRegistry();
 }

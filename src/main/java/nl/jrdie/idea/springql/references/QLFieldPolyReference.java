@@ -9,18 +9,15 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementResolveResult;
 import com.intellij.psi.PsiPolyVariantReferenceBase;
 import com.intellij.psi.ResolveResult;
-import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import javax.swing.Icon;
 import nl.jrdie.idea.springql.icons.QLIcons;
 import nl.jrdie.idea.springql.ide.codeInsight.completion.QLForeignFieldNameInsertHandler;
-import nl.jrdie.idea.springql.index.entry.SchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.svc.QLIdeService;
+import nl.jrdie.idea.springql.types.SchemaMappingSummary;
 import nl.jrdie.idea.springql.utils.QLIdeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.uast.UAnnotation;
 import org.jetbrains.uast.UMethod;
 import org.jetbrains.uast.UastContextKt;
 
@@ -38,20 +35,28 @@ public class QLFieldPolyReference extends PsiPolyVariantReferenceBase<PsiElement
       return ResolveResult.EMPTY_ARRAY;
     }
 
-    final UAnnotation parentAnnotation =
-        UastContextKt.getUastParentOfType(myElement, UAnnotation.class);
+    final UMethod parentAnnotation = UastContextKt.getUastParentOfType(myElement, UMethod.class);
     if (parentAnnotation == null) {
       return ResolveResult.EMPTY_ARRAY;
     }
 
-    final Set<SchemaMappingIndexEntry> annotations =
-        svc.getIndex().schemaMappingByAnnotation(parentAnnotation);
+    final SchemaMappingSummary annotations = svc.getSummaryForMethod(parentAnnotation);
 
-    return annotations.stream()
-        .map(SchemaMappingIndexEntry::getSchemaPsi)
-        .flatMap(List::stream)
-        .map(PsiElementResolveResult::new)
-        .toArray(ResolveResult[]::new);
+    if (annotations == null) {
+      return ResolveResult.EMPTY_ARRAY;
+    }
+
+    final PsiElement schemaPsi = annotations.getSchemaPsi();
+    if (schemaPsi == null) {
+      return ResolveResult.EMPTY_ARRAY;
+    }
+
+    return new PsiElementResolveResult[] {new PsiElementResolveResult(schemaPsi)};
+    //    return annotations.stream()
+    //        .map(SchemaMappingIndexEntry::getSchemaPsi)
+    //        .flatMap(List::stream)
+    //        .map(PsiElementResolveResult::new)
+    //        .toArray(ResolveResult[]::new);
   }
 
   @NotNull
@@ -76,14 +81,21 @@ public class QLFieldPolyReference extends PsiPolyVariantReferenceBase<PsiElement
       return null;
     }
 
-    final UAnnotation nearestAnnotation =
-        svc.findNearestSchemaMappingAnnotations(UastContextKt.toUElement(myElement)).stream()
-            .findFirst()
-            .orElse(null);
+    final UMethod parentAnnotation = UastContextKt.getUastParentOfType(myElement, UMethod.class);
+    if (parentAnnotation == null) {
+      return null;
+    }
+
+    final SchemaMappingSummary annotations = svc.getSummaryForMethod(parentAnnotation);
+
+    //    final UAnnotation nearestAnnotation =
+    //        svc.findNearestSchemaMappingAnnotations(UastContextKt.toUElement(myElement)).stream()
+    //            .findFirst()
+    //            .orElse(null);
 
     ObjectTypeDefinition parentTypeByAnnotation = null;
-    if (nearestAnnotation != null) {
-      final String parentTypeName = svc.findApplicableParentTypeName(nearestAnnotation);
+    if (annotations != null) {
+      final String parentTypeName = svc.findApplicableParentTypeName(annotations.getUAnnotation());
       if (parentTypeName == null) {
         return null;
       }
