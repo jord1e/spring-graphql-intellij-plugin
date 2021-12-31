@@ -57,8 +57,4 @@ public interface QLIdeService {
 
   @NotNull
   QLSchemaRegistry getSchemaRegistry();
-
-  //    @NotNull
-  //    Project getApplicableProject();
-
 }

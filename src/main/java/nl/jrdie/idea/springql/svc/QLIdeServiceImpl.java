@@ -1,10 +1,8 @@
 package nl.jrdie.idea.springql.svc;
 
 import com.intellij.lang.java.JavaLanguage;
-import com.intellij.lang.jsgraphql.schema.GraphQLSchemaChangeTracker;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaInfo;
 import com.intellij.lang.jsgraphql.schema.GraphQLSchemaProvider;
-import com.intellij.lang.jsgraphql.schema.library.GraphQLLibraryTypes;
 import com.intellij.lang.jsgraphql.types.language.FieldDefinition;
 import com.intellij.lang.jsgraphql.types.language.InputValueDefinition;
 import com.intellij.lang.jsgraphql.types.language.Node;
@@ -26,22 +24,16 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.stubs.StubIndex;
 import com.intellij.psi.stubs.StubIndexKey;
 import com.intellij.psi.util.PsiModificationTracker;
-import java.text.NumberFormat;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
+import com.intellij.util.messages.Topic;
+import nl.jrdie.idea.springql.GraphQLSchemaEventListener;
 import nl.jrdie.idea.springql.index.MutableQLIdeIndex;
 import nl.jrdie.idea.springql.index.QLIdeIndex;
 import nl.jrdie.idea.springql.index.entry.QLClassSchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.index.entry.QLMethodSchemaMappingIndexEntry;
 import nl.jrdie.idea.springql.index.processor.QLAnnotationIndexProcessor;
 import nl.jrdie.idea.springql.types.SchemaMappingSummary;
+import nl.jrdie.idea.springql.utils.JSGraphQLPlugin;
+import nl.jrdie.idea.springql.utils.JSGraphQLVersionBypassUtils;
 import nl.jrdie.idea.springql.utils.QLIdeUtil;
 import nl.jrdie.idea.springql.utils.UExtKt;
 import org.jetbrains.annotations.NotNull;
@@ -54,6 +46,17 @@ import org.jetbrains.uast.UElement;
 import org.jetbrains.uast.ULiteralExpression;
 import org.jetbrains.uast.UMethod;
 import org.jetbrains.uast.UastContextKt;
+
+import java.text.NumberFormat;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
@@ -83,7 +86,7 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
   @NotNull private final Project project;
 
-  @Nullable private QLSchemaRegistry cachedSchemaRegistry;
+  // TODO  @Nullable private QLSchemaRegistry cachedSchemaRegistry;
 
   @Nullable private QLIdeIndex cachedIdeIndex;
 
@@ -98,6 +101,50 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
     this.javaModificationCount = new AtomicLong(0);
     this.kotlinModificationCount = new AtomicLong(0);
     this.graphQLModificationCount = new AtomicLong(0);
+
+    tryRegisterGraphQLSchemaChangeListener();
+  }
+
+  @SuppressWarnings({"unchecked", "JavaReflectionMemberAccess"})
+  private void tryRegisterGraphQLSchemaChangeListener() {
+    // Only implement this for the 2020.3 compatible JS GraphQL version (3.0.0-2020.3)
+    if (!JSGraphQLPlugin.INSTANCE.is2020dot3version()) {
+      return;
+    }
+
+    // ----------------------------------------
+    // I DISGUST EVERYTHING ABOUT THIS FUNCTION
+    // ----------------------------------------
+
+    // https://github.com/jimkyndemeyer/js-graphql-intellij-plugin/blob/3.0.0/src/main/com/intellij/lang/jsgraphql/schema/GraphQLSchemaChangeListener.java
+    // com.intellij.lang.jsgraphql.schema
+    try {
+      Class<?> graphQLSchemaChangeListenerCls =
+          Class.forName("com.intellij.lang.jsgraphql.schema.GraphQLSchemaChangeListener");
+      Topic<? super GraphQLSchemaEventListener> targetTopic =
+          (Topic<? super GraphQLSchemaEventListener>)
+              graphQLSchemaChangeListenerCls.getField("TOPIC").get(null);
+
+      if (targetTopic == null) {
+        throw new IllegalStateException("TOPIC Not found"); // TODO Error message
+      }
+
+      // Automatically disposed when `this` service is disposed (we implement Disposable)
+      project
+          .getMessageBus()
+          .connect(this)
+          .subscribe(
+              targetTopic,
+              (GraphQLSchemaEventListener)
+                  schemaVersion -> {
+                    // Force reloading of the index when a schema file changes
+                    QLIdeServiceImpl.this.getIndex(true);
+                  });
+    } catch (Exception e) {
+      throw new IllegalStateException(
+          "Failed to register schema change listener for 2020.3 JS GraphQL plugin version @ GraphQL Spring Support",
+          e);
+    }
   }
 
   @NotNull
@@ -311,7 +358,8 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
 
   @Override
   public boolean isApolloFederationSupportEnabled() {
-    return GraphQLLibraryTypes.FEDERATION.isEnabled(this.project);
+    return !JSGraphQLPlugin.INSTANCE.is2020dot3version()
+        && JSGraphQLVersionBypassUtils.isApolloFederationEnabled(this.project);
   }
 
   @Nullable
@@ -469,10 +517,8 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
   @NotNull
   @Override
   public QLSchemaRegistry getSchemaRegistry() {
+    // TODO Cache registry?
     return new QLSchemaRegistry(getTypeDefinitionRegistry(), getGraphQLSchemaInfo());
-    //        return Objects.requireNonNullElseGet(cachedSchemaRegistry,
-    //                () -> cachedSchemaRegistry = new
-    // QLSchemaRegistry(getTypeDefinitionRegistry()));
   }
 
   @NotNull
@@ -523,14 +569,40 @@ public class QLIdeServiceImpl implements QLIdeService, Disposable {
     boolean kotlinModified =
         this.kotlinModificationCount.getAndSet(kotlinModificationCount) != kotlinModificationCount;
 
-    long graphQLModificationCount =
-        GraphQLSchemaChangeTracker.getInstance(this.project)
-            .getSchemaModificationTracker()
-            .getModificationCount();
+    boolean graphQLModified = false;
 
-    boolean graphQLModified =
-        this.graphQLModificationCount.getAndSet(graphQLModificationCount)
-            != graphQLModificationCount;
+    // TODO Fix this 2020.3 support logic
+    if (!JSGraphQLPlugin.INSTANCE.is2020dot3version()) {
+      //noinspection CommentedOutCode
+      try {
+        Class<?> changeTracker =
+            Class.forName("com.intellij.lang.jsgraphql.schema.GraphQLSchemaChangeTracker");
+        Object schemaTracker =
+            changeTracker.getMethod("getInstance", Project.class).invoke(null, this.project);
+        Object modificationTracker =
+            schemaTracker
+                .getClass()
+                .getMethod("getSchemaModificationTracker")
+                .invoke(schemaTracker);
+        long graphQLModificationCount =
+            (long)
+                schemaTracker
+                    .getClass()
+                    .getMethod("getModificationCount")
+                    .invoke(modificationTracker);
+
+        //        long graphQLModificationCount =
+        //            GraphQLSchemaChangeTracker.getInstance(this.project)
+        //                .getSchemaModificationTracker()
+        //                .getModificationCount();
+
+        graphQLModified =
+            this.graphQLModificationCount.getAndSet(graphQLModificationCount)
+                != graphQLModificationCount;
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
 
     return javaModified || kotlinModified || graphQLModified;
   }

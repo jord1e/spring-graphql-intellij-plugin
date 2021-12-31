@@ -11,6 +11,7 @@ import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 
+@Suppress("FoldInitializerAndIfToElvis")
 class SchemaMappingToSchemaLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     override fun collectNavigationMarkers(

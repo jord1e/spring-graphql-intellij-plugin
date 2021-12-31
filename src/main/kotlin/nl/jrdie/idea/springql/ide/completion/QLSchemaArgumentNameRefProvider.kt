@@ -11,6 +11,7 @@ import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.expressions.UInjectionHost
 import org.jetbrains.uast.getUastParentOfType
 
+@Suppress("FoldInitializerAndIfToElvis")
 class QLSchemaArgumentNameRefProvider : UastReferenceProvider(UInjectionHost::class.java) {
 
     override fun getReferencesByElement(element: UElement, context: ProcessingContext): Array<PsiReference> {

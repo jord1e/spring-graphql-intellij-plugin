@@ -3,6 +3,7 @@ package nl.jrdie.idea.springql.icons
 import com.intellij.openapi.util.IconLoader
 import javax.swing.Icon
 
+@Suppress("unused")
 object QLIcons {
 
     private fun getIcon(path: String): Icon {

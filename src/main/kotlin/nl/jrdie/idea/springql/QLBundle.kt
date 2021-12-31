@@ -7,6 +7,7 @@ import org.jetbrains.annotations.PropertyKey
 @NonNls
 private const val BUNDLE = "messages.SpringGraphQLBundle"
 
+@Suppress("unused")
 object QLBundle : DynamicBundle(BUNDLE) {
 
     @Suppress("SpreadOperator")

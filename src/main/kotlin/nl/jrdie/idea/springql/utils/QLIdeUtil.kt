@@ -16,7 +16,7 @@ object QLIdeUtil {
     const val BATCH_MAPPING_FQN = "org.springframework.graphql.data.method.annotation.BatchMapping"
     const val ARGUMENT_FQN = "org.springframework.graphql.data.method.annotation.Argument"
 
-    fun getGraphQlField(uAnnotation: UAnnotation): String? {
+    private fun getGraphQlField(uAnnotation: UAnnotation): String {
         val field: String? = when (uAnnotation.qualifiedName) {
             SCHEMA_MAPPING_FQN -> AliasForUtil.findValue(uAnnotation, "field")
                 ?: AliasForUtil.findValue(uAnnotation, "value")
@@ -43,11 +43,11 @@ object QLIdeUtil {
     }
 
     fun getGraphQlField(uMethod: UMethod): String? {
-        return uMethod.uAnnotations.mapNotNull { getGraphQlField(it) }.firstOrNull()
+        return uMethod.uAnnotations.map { getGraphQlField(it) }.firstOrNull()
     }
 
     fun getGraphQlField(uMethod: UClass): String? {
-        return uMethod.uAnnotations.mapNotNull { getGraphQlField(it) }.firstOrNull()
+        return uMethod.uAnnotations.map { getGraphQlField(it) }.firstOrNull()
     }
 
     fun getSchemaMappingTypeName(uAnnotation: UAnnotation): String? {

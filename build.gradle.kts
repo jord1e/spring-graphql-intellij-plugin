@@ -76,6 +76,12 @@ tasks {
         }
     }
 
+    compileTestKotlin {
+        kotlinOptions {
+            jvmTarget = properties("javaVersion")
+        }
+    }
+
     runIde {
         autoReloadPlugins.set(true)
     }

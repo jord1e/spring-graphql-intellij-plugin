@@ -9,6 +9,7 @@ import nl.jrdie.idea.springql.svc.QLIdeService
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 
+@Suppress("FoldInitializerAndIfToElvis")
 class SchemaMappingDoesNotExistAnnotator : Annotator {
 
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
